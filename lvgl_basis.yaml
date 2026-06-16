@@ -1,0 +1,3643 @@
+# ================================
+# LVGL Display Configuration Package
+# Display Drehwurm - Basis Konfiguration
+# Display: 1024x600 Pixel
+#
+# Diese Datei wird als Package importiert:
+# packages:
+#   lvgl_config: !include lvgl_basis.yaml
+# ================================
+# ── Komponenten ──────────────────────────────────────────────────────────────────
+#  font:      font_title, font_normal, font_preset_num, font_tab, font_small,
+#             font_clock, font_default_40px (Roboto 40px, ehem. font_temp),
+#             font_icons, font_timer (digital-7_mono 60px),
+#             font_arc_val, font_icon_xl, font_icons_md, font_auto_a,
+#             font_icon_ts, font_cd_btn, font_ts_xl
+#
+#  image:     img_stopwatch (60x60), img_countdown (60x60)          – Default-Ansicht Buttons
+#             img_stopwatch_bg (120x120), img_countdown_bg (120x120) – BG-Symbol running_view
+#             Quelle: graphics/stopwatch_23f1.svg, graphics/cowntdown_23f3.svg
+#             BG-Widgets: img_bg1..img_bg6 (je 1 Widget, Quelle per lv_image_set_src getauscht)
+#
+#  globals:   slot_start_ms, slot_elapsed_ms, slot_status,
+#             slot_is_countdown, slot_countdown_max_ms,
+#             overlay_cd_slot, overlay_cd_mode, overlay_cd_selected_min,
+#             brightness_auto_mode, brightness_auto_updating,
+#             led_auto_brightness, led_auto_updating,
+#             system_ein, global_leds_per_slot
+#
+#  binary_sensor: bin_slot1_blink .. bin_slot6_blink  (template, internal)
+#
+#  script:    script_open_countdown_overlay, script_slot_start, script_slot_stop,
+#             script_slot_pause_resume, set_countdown_secs
+#
+#  interval:  500ms – Timer/Countdown-Anzeige, Blink, BG-Symbol-Umschaltung,
+#                     AMG8833-Overlay, Uhrzeit/Datum, Auto-Stop Schwenker+Drehen
+#             10s   – LVGL-Idle
+#
+#  lvgl:      page_main, page_settings
+#             Slot-Container: slot1_red..slot6_..  (je 120px hoch)
+#               – Default-Ansicht: img_stopwatch / img_countdown Buttons (60px SVG)
+#               – Running-Ansicht: BG-Symbol 120px 60% opa (x:-26), Timer font_timer 60px
+#                 lbl_slotX_time: align CENTER x:0 y:0
+# ─────────────────────────────────────────────────────────────────────────────────
+
+# Font Definitionen (Top-Level, nicht unter lvgl!)
+font:
+  - file: "gfonts://Roboto@700"
+    id: font_title
+    size: 60
+    bpp: 4
+    glyphs: " -/CEKOPSTacdeghiklmnoprstuwx"  # Timer/Cowntdown + Sensor-Phalanx + Schwenker Einstellungen + STOP
+
+  - file: "gfonts://Roboto@400"
+    id: font_normal
+    size: 28
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyzäöüÄÖÜß{|}~°·–"
+
+  - file: "gfonts://Noto+Sans+Symbols@400"
+    id: font_preset_num
+    size: 28
+    bpp: 4
+    glyphs: "①②③④⑤"
+
+  - file: "gfonts://Roboto@400"
+    id: font_tab
+    size: 30
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyzäöüÄÖÜß{|}~°"
+
+  - file: "gfonts://Roboto@700"
+    id: font_small
+    size: 18
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyzäöüÄÖÜß{|}~°·–"
+
+  # Uhrzeit-Font (Statusleiste hh:mm:ss)
+  - file: "gfonts://Roboto@400"
+    id: font_clock
+    size: 22
+    bpp: 4
+    glyphs: "0123456789:- ,.DFMSaceghimnorstw"
+
+  # Temperatur-Font (Statusleiste, gleiche Größe wie Schneeflocken-Symbol)
+  - file: "gfonts://Roboto@400"
+    id: font_default_40px
+    size: 40
+    bpp: 4
+    glyphs: "0123456789.-°CW"
+
+  # Symbol-Font – Font Awesome Solid (Play/Pause/Schneeflocke/Einstellungen)
+  - file: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/webfonts/fa-solid-900.ttf"
+    id: font_icons
+    size: 40
+    bpp: 4
+    glyphs:
+      - "\uF04B"  # Play
+      - "\uF04C"  # Pause
+      - "\uF2DC"  # Schneeflocke
+      - "\uF013"  # Zahnrad (Einstellungen)
+      - "\uF545"  # Ruler (ToF Distanz)
+      - "\uF2C9"  # Thermometer-half (Temperatur)
+      - "\uF043"  # Droplet (Luftfeuchtigkeit)
+      - "\uF72E"  # Wind (Luftdruck)
+      - "\uF6FC"  # Mountain (Höhe)
+      - "\uF185"  # Sun (Licht)
+      - "\uF05B"  # Crosshairs / Laser (IR)
+      - "\uF011"  # Power (Ein/Aus)
+      - "\uF773"  # Water (Beckenfüllung)
+      - "\uF021"  # arrows-rotate (Schwenker Start/Stop)
+      - "\uF186"  # Moon (Standby)
+      - "\uF00D"  # xmark (X-Button)
+      - "\uF72F"  # wine-bottle (Kühl-Saldo Getränkesymbol)
+      - "\uF2F2"  # stopwatch (Stoppuhr)
+      - "\uF252"  # hourglass-half (Countdown/Sanduhr)
+      - "\ue516"  # jar (fa-jar, FA6 v6.0, Dose/Konserve, cd_mini Reihen-Icon)
+
+  # Digital-7 Mono Font für Timer-Anzeige
+  - file: "fonts/digital-7_mono.ttf"
+    id: font_timer
+    size: 60
+    bpp: 4
+    glyphs: "0123456789: "
+
+  # Arc-Wert-Font (Schwenker-Overlay, groß)
+  - file: "gfonts://Roboto@400"
+    id: font_arc_val
+    size: 56
+    bpp: 4
+    glyphs: "0123456789.s% AM"
+
+  # Großes Drehsymbol für Schwenker-Button (Font Awesome arrows-rotate U+F021)
+  - file: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/webfonts/fa-solid-900.ttf"
+    id: font_icon_xl
+    size: 120
+    bpp: 4
+    glyphs:
+      - "\uF021"  # arrows-rotate (Schwenken, links+rechts)
+      - "\uF2F9"  # rotate-right  (Drehen, nur rechts)
+
+  # Auto-Motor-Button: Drehsymbol ~30% größer als font_icons (40→53px)
+  - file: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/webfonts/fa-solid-900.ttf"
+    id: font_icons_md
+    size: 64
+    bpp: 4
+    glyphs:
+      - "\uF021"  # arrows-rotate
+
+  # Auto-Motor-Button: A ~30% größer als font_normal (28→37px)
+  - file: "gfonts://Roboto@700"
+    id: font_auto_a
+    size: 37
+    bpp: 4
+    glyphs: "A"
+
+  # IR-Temperatur-Overlay: Laser-Icon 80px (bewusst kleiner als Temp-Wert)
+  - file: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/webfonts/fa-solid-900.ttf"
+    id: font_icon_ts
+    size: 80
+    bpp: 4
+    glyphs:
+      - "\uF05B"  # Crosshairs / Laser (IR)
+
+  # cd_mini buttonmatrix Zifferntasten (42px, ~50% größer als font_normal)
+  - file: "gfonts://Roboto@700"
+    id: font_cd_btn
+    size: 42
+    bpp: 4
+    glyphs: "0123456789. "
+
+  # IR-Temperatur-Overlay: Temperaturwert 120px
+  - file: "gfonts://Roboto@700"
+    id: font_ts_xl
+    size: 120
+    bpp: 4
+    glyphs: "0123456789.,-\xc2\xb0C "
+
+# SVG-Symbole für Slot Timer/Countdown Buttons
+image:
+  - file: graphics/stopwatch_23f1.svg
+    id: img_stopwatch
+    resize: 60x60
+    type: RGB
+    transparency: alpha_channel
+  - file: graphics/cowntdown_23f3.svg
+    id: img_countdown
+    resize: 60x60
+    type: RGB
+    transparency: alpha_channel
+  # 120px (200%) Hintergrundsymbole für Slot1 running_view
+  - file: graphics/stopwatch_23f1.svg
+    id: img_stopwatch_bg
+    resize: 120x120
+    type: RGB
+    transparency: alpha_channel
+  - file: graphics/cowntdown_23f3.svg
+    id: img_countdown_bg
+    resize: 120x120
+    type: RGB
+    transparency: alpha_channel
+
+# Timer-Globals für alle 6 Slots
+# Status: 0=gestoppt  1=läuft  2=pausiert
+globals:
+  - id: slot_start_ms
+    type: std::array<uint32_t, 6>
+    restore_value: false
+    initial_value: '{0, 0, 0, 0, 0, 0}'
+  - id: slot_elapsed_ms
+    type: std::array<uint32_t, 6>
+    restore_value: false
+    initial_value: '{0, 0, 0, 0, 0, 0}'
+  - id: slot_status
+    type: std::array<int, 6>
+    restore_value: false
+    initial_value: '{0, 0, 0, 0, 0, 0}'
+  # Helligkeits-Automodus (VEML7700)
+  - id: brightness_auto_mode
+    type: bool
+    restore_value: false
+    initial_value: 'true'
+  - id: brightness_auto_updating
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  # LED-Helligkeits-Automodus (VEML7700)
+  - id: led_auto_brightness
+    type: bool
+    restore_value: false
+    initial_value: 'true'
+  - id: led_auto_updating
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: system_ein
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+  - id: global_leds_per_slot
+    type: float
+    restore_value: true
+    initial_value: '9.0'
+  # ── Timer / Countdown ──────────────────────────────────────
+  - id: slot_is_countdown
+    type: std::array<bool, 6>
+    restore_value: false
+    initial_value: '{false, false, false, false, false, false}'
+  - id: slot_countdown_max_ms
+    type: std::array<uint32_t, 6>
+    restore_value: true
+    initial_value: '{240000, 240000, 240000, 240000, 240000, 240000}'
+  # ── Countdown Mini-Overlay ─────────────────────────────────────
+  - id: overlay_cd_slot
+    type: int
+    restore_value: false
+    initial_value: '0'
+  - id: overlay_cd_mode
+    type: int
+    restore_value: false
+    initial_value: '0'
+  - id: overlay_cd_selected_min
+    type: std::array<int, 6>
+    restore_value: true
+    initial_value: '{0, 0, 0, 0, 0, 0}'
+sensor:
+  - platform: template
+    id: sensor_leds_per_slot
+    internal: true
+    accuracy_decimals: 0
+
+binary_sensor:
+  - platform: template
+    id: bin_slot1_blink
+    internal: true
+  - platform: template
+    id: bin_slot2_blink
+    internal: true
+  - platform: template
+    id: bin_slot3_blink
+    internal: true
+  - platform: template
+    id: bin_slot4_blink
+    internal: true
+  - platform: template
+    id: bin_slot5_blink
+    internal: true
+  - platform: template
+    id: bin_slot6_blink
+    internal: true
+
+script:
+  - id: set_countdown_secs
+    parameters:
+      secs: int
+    then:
+      - lambda: |-
+          int i = id(overlay_cd_slot);
+          if (i < 0 || i > 5) return;
+          id(overlay_cd_selected_min)[i] = secs;
+          id(slot_countdown_max_ms)[i] = (uint32_t)secs * 1000U;
+          id(slot_is_countdown)[i] = true;
+
+          if (id(overlay_cd_mode) == 0) {
+            id(slot_elapsed_ms)[i] = 0;
+            id(slot_start_ms)[i] = millis();
+            id(slot_status)[i] = 1;
+
+            lv_obj_t* default_v[6] = {
+              id(slot1_default_view), id(slot2_default_view), id(slot3_default_view),
+              id(slot4_default_view), id(slot5_default_view), id(slot6_default_view)
+            };
+            lv_obj_t* running_v[6] = {
+              id(slot1_running_view), id(slot2_running_view), id(slot3_running_view),
+              id(slot4_running_view), id(slot5_running_view), id(slot6_running_view)
+            };
+            lv_obj_add_flag(default_v[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(running_v[i], LV_OBJ_FLAG_HIDDEN);
+            if (id(auto_motorbetrieb)) {
+              if (id(dr_modus)) id(script_drehen_start)->execute();
+              else              id(script_schwenker_start)->execute();
+            }
+          }
+          lv_obj_add_flag(id(overlay_cd_mini), LV_OBJ_FLAG_HIDDEN);
+
+  - id: script_slot_stop
+    parameters:
+      slot_idx: int
+    then:
+      - lambda: |-
+          int i = slot_idx;
+          if (i < 0 || i > 5) return;
+          if (id(slot_status)[i] == 1)
+            id(slot_elapsed_ms)[i] += millis() - id(slot_start_ms)[i];
+          id(slot_elapsed_ms)[i] = 0;
+          id(slot_start_ms)[i] = 0;
+          id(slot_status)[i] = 0;
+          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink)
+          };
+          blink_s[i]->publish_state(false);
+          const uint32_t slot_fc[6] = {0xFF0000,0xFFFF00,0x00FF00,0x00FFFF,0x0000FF,0xFF00FF};
+          lv_obj_t* slot_tab_btn[6] = {
+            id(slot1_tab), id(slot2_tab), id(slot3_tab),
+            id(slot4_tab), id(slot5_tab), id(slot6_tab)
+          };
+          lv_obj_set_style_bg_color(slot_tab_btn[i], lv_color_hex(slot_fc[i]), 0);
+          lv_obj_t* slot_time_lbl[6] = {
+            id(lbl_slot1_time), id(lbl_slot2_time), id(lbl_slot3_time),
+            id(lbl_slot4_time), id(lbl_slot5_time), id(lbl_slot6_time)
+          };
+          lv_label_set_text(slot_time_lbl[i], "00:00");
+          lv_obj_t* running_v[6] = {
+            id(slot1_running_view), id(slot2_running_view), id(slot3_running_view),
+            id(slot4_running_view), id(slot5_running_view), id(slot6_running_view)
+          };
+          lv_obj_t* default_v[6] = {
+            id(slot1_default_view), id(slot2_default_view), id(slot3_default_view),
+            id(slot4_default_view), id(slot5_default_view), id(slot6_default_view)
+          };
+          lv_obj_add_flag(running_v[i], LV_OBJ_FLAG_HIDDEN);
+          lv_obj_clear_flag(default_v[i], LV_OBJ_FLAG_HIDDEN);
+          if (id(auto_motorbetrieb)) {
+            bool _any_active = false;
+            for (int _j = 0; _j < 6; _j++) {
+              if (_j == i) continue;
+              if (id(slot_status)[_j] > 0 || blink_s[_j]->state) { _any_active = true; break; }
+            }
+            if (_any_active) {
+              if (id(dr_modus)) id(script_drehen_start)->execute();
+              else id(script_schwenker_start)->execute();
+            } else {
+              // Letzter aktiver Slot gestoppt → Slot anfahren (wie bei Pause/Ende)
+              id(script_schwenker_goto_slot)->execute(i + 1);
+            }
+          }
+
+  - id: script_slot_start
+    parameters:
+      slot_idx: int
+    then:
+      - lambda: |-
+          int i = slot_idx;
+          if (i < 0 || i > 5) return;
+          id(slot_is_countdown)[i] = false;
+          id(slot_elapsed_ms)[i] = 0;
+          id(slot_start_ms)[i] = millis();
+          id(slot_status)[i] = 1;
+          lv_obj_t* slot_time_lbl[6] = {
+            id(lbl_slot1_time), id(lbl_slot2_time), id(lbl_slot3_time),
+            id(lbl_slot4_time), id(lbl_slot5_time), id(lbl_slot6_time)
+          };
+          lv_label_set_text(slot_time_lbl[i], "00:00");
+          lv_obj_t* default_v[6] = {
+            id(slot1_default_view), id(slot2_default_view), id(slot3_default_view),
+            id(slot4_default_view), id(slot5_default_view), id(slot6_default_view)
+          };
+          lv_obj_t* running_v[6] = {
+            id(slot1_running_view), id(slot2_running_view), id(slot3_running_view),
+            id(slot4_running_view), id(slot5_running_view), id(slot6_running_view)
+          };
+          lv_obj_add_flag(default_v[i], LV_OBJ_FLAG_HIDDEN);
+          lv_obj_clear_flag(running_v[i], LV_OBJ_FLAG_HIDDEN);
+          if (id(auto_motorbetrieb)) {
+            if (id(dr_modus)) id(script_drehen_start)->execute();
+            else id(script_schwenker_start)->execute();
+          }
+
+  - id: script_slot_pause_resume
+    parameters:
+      slot_idx: int
+    then:
+      - lambda: |-
+          int i = slot_idx;
+          if (i < 0 || i > 5) return;
+          if (id(slot_status)[i] == 0) return;
+          if (id(slot_status)[i] == 1) {
+            id(slot_elapsed_ms)[i] += millis() - id(slot_start_ms)[i];
+            id(slot_status)[i] = 2;
+            // Timer-Label mit festem ':' einfrieren (kein Blinken im Pause-Zustand)
+            {
+              lv_obj_t* tlbl = nullptr;
+              switch(i) {
+                case 0: tlbl = id(lbl_slot1_time); break;
+                case 1: tlbl = id(lbl_slot2_time); break;
+                case 2: tlbl = id(lbl_slot3_time); break;
+                case 3: tlbl = id(lbl_slot4_time); break;
+                case 4: tlbl = id(lbl_slot5_time); break;
+                case 5: tlbl = id(lbl_slot6_time); break;
+              }
+              if (tlbl) {
+                char pbuf[8];
+                uint32_t tms = id(slot_elapsed_ms)[i];
+                if (id(slot_is_countdown)[i]) {
+                  uint32_t mms = id(slot_countdown_max_ms)[i];
+                  uint32_t rem = (tms < mms) ? (mms - tms) : 0;
+                  uint32_t s = rem / 1000;
+                  snprintf(pbuf, sizeof(pbuf), "%02u:%02u", (unsigned)(s/60), (unsigned)(s%60));
+                } else {
+                  uint32_t s = tms / 1000;
+                  snprintf(pbuf, sizeof(pbuf), "%02u:%02u", (unsigned)(s/60), (unsigned)(s%60));
+                }
+                lv_label_set_text(tlbl, pbuf);
+              }
+            }
+            if (id(auto_motorbetrieb)) id(script_schwenker_goto_slot)->execute(i + 1);
+          } else {
+            id(slot_start_ms)[i] = millis();
+            id(slot_status)[i] = 1;
+            if (id(auto_motorbetrieb)) {
+              if (id(dr_modus)) id(script_drehen_start)->execute();
+              else id(script_schwenker_start)->execute();
+            }
+          }
+
+  - id: script_open_countdown_overlay
+    parameters:
+      slot_idx: int
+      mode: int
+    then:
+      - lambda: |-
+          id(overlay_cd_slot) = slot_idx;
+          id(overlay_cd_mode) = mode;
+          // Position: Links (0-2) x=15, Rechts (3-5) x=609; y folgt Slot-Position
+          const int slot_ys[6] = {110, 250, 390, 110, 250, 390};
+          int ox = (slot_idx < 3) ? 15 : (1024 - 510 - 15);
+          int oy = slot_ys[slot_idx];
+          lv_obj_set_pos(id(overlay_cd_mini), ox, oy);
+          lv_obj_clear_flag(id(overlay_cd_mini), LV_OBJ_FLAG_HIDDEN);
+
+interval:
+  - interval: 500ms
+    then:
+      - lambda: |-
+          char buf[8];
+          // ── Blink-Phase (500 ms Takt) ────────────────────────────────
+          static bool tc_blink_phase = false;
+          tc_blink_phase = !tc_blink_phase;
+          lv_obj_t* slot_time_lbl[6] = {
+            id(lbl_slot1_time), id(lbl_slot2_time), id(lbl_slot3_time),
+            id(lbl_slot4_time), id(lbl_slot5_time), id(lbl_slot6_time)
+          };
+          lv_obj_t* slot_title_lbl[6] = {
+            id(lbl_slot1_timer_title), id(lbl_slot2_timer_title), id(lbl_slot3_timer_title),
+            id(lbl_slot4_timer_title), id(lbl_slot5_timer_title), id(lbl_slot6_timer_title)
+          };
+          lv_obj_t* slot_sym_lbl[6] = {
+            id(lbl_slot1_symbol), id(lbl_slot2_symbol), id(lbl_slot3_symbol),
+            id(lbl_slot4_symbol), id(lbl_slot5_symbol), id(lbl_slot6_symbol)
+          };
+          lv_obj_t* slot_tab_btn[6] = {
+            id(slot1_tab), id(slot2_tab), id(slot3_tab),
+            id(slot4_tab), id(slot5_tab), id(slot6_tab)
+          };
+          const uint32_t slot_fc[6] = {0xFF0000,0xFFFF00,0x00FF00,0x00FFFF,0x0000FF,0xFF00FF};
+          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink),
+          };
+          for (int ii = 0; ii < 6; ii++) {
+            // Titel: Timer / Countdown dynamisch
+            lv_label_set_text(slot_title_lbl[ii], id(slot_is_countdown)[ii] ? "Countdown" : "Timer");
+            // Blink: Tab-Farbe pulsieren lassen (bin_slotX_blink – safe in lambda)
+            if (blink_s[ii]->state) {
+              lv_obj_set_style_bg_color(slot_tab_btn[ii],
+                tc_blink_phase ? lv_color_hex(slot_fc[ii]) : lv_color_hex(0x222222), 0);
+            }
+            if (id(slot_status)[ii] != 1) continue;
+            uint32_t total_ms = id(slot_elapsed_ms)[ii] + (millis() - id(slot_start_ms)[ii]);
+            if (id(slot_is_countdown)[ii]) {
+              uint32_t max_ms = id(slot_countdown_max_ms)[ii];
+              if (total_ms >= max_ms) {
+                // Countdown abgelaufen: Alarm auslösen
+                id(slot_elapsed_ms)[ii] = 0;
+                id(slot_start_ms)[ii] = millis();
+                id(slot_status)[ii] = 2;
+                blink_s[ii]->publish_state(true);
+                lv_label_set_text(slot_time_lbl[ii], "00:00");
+                lv_label_set_text(slot_sym_lbl[ii], "\xef\x81\x8b");
+                // Motor-Automode: bei CD-Ablauf → Slot anfahren
+                if (id(auto_motorbetrieb)) {
+                  id(script_schwenker_goto_slot)->execute(ii + 1);
+                }
+              } else {
+                uint32_t rem = max_ms - total_ms;
+                uint32_t s = rem / 1000;
+                snprintf(buf, sizeof(buf), "%02u%s%02u", (unsigned)(s/60), tc_blink_phase ? ":" : " ", (unsigned)(s%60));
+                lv_label_set_text(slot_time_lbl[ii], buf);
+              }
+            } else {
+              uint32_t s = total_ms / 1000;
+              snprintf(buf, sizeof(buf), "%02u%s%02u", (unsigned)(s/60), tc_blink_phase ? ":" : " ", (unsigned)(s%60));
+              lv_label_set_text(slot_time_lbl[ii], buf);
+            }
+          }
+          // AMG8833 Overlay aktualisieren wenn sichtbar
+          if (!lv_obj_has_flag(id(overlay_amg8833), LV_OBJ_FLAG_HIDDEN)) {
+            amg_update_cells(id(amg_pixel_temps).data());
+          }
+          // Uhrzeit in Statusleiste aktualisieren (SNTP)
+          auto t = id(sntp_time).now();
+          if (t.is_valid()) {
+            char tbuf[9];
+            snprintf(tbuf, sizeof(tbuf), "%02d:%02d:%02d", t.hour, t.minute, t.second);
+            lv_label_set_text(id(lbl_status_clock), tbuf);
+            static const char* wdays[] = {"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"};
+            char dbuf[24];
+            int dow = t.day_of_week - 1;  // ESPHome: 1=Sonntag..7=Samstag → 0-basiert
+            if (dow < 0 || dow > 6) dow = 0;  // Bounds check
+            snprintf(dbuf, sizeof(dbuf), "%s, %02d.%02d.", wdays[dow], t.day_of_month, t.month);
+            lv_label_set_text(id(lbl_status_date), dbuf);
+          }
+          // ── Auto-Stop: Schwenker stoppen + Slot anfahren wenn alle Timer/CDs enden ──
+          if (id(sw_auto_stop_armed) && id(sw_aktiv)) {
+            bool any_running = false;
+            for (int _j = 0; _j < 6; _j++) {
+              if (id(slot_status)[_j] == 1) { any_running = true; break; }
+            }
+            if (!any_running) {
+              int target = id(sw_auto_stop_slot) + 1;  // 0-basiert → 1-basiert
+              id(sw_auto_stop_armed) = false;
+              ESP_LOGI("schwenker", "Auto-Stop: alle Timer beendet, fahre Slot %d an", target);
+              id(script_schwenker_goto_slot)->execute(target);
+            }
+          }
+          // ── Auto-Arm: dr_auto_stop_armed aktuell halten wenn Slot läuft ─────
+          if (id(dr_aktiv)) {
+            for (int _k = 0; _k < 6; _k++) {
+              if (id(slot_status)[_k] == 1) {
+                id(dr_auto_stop_armed) = true;
+                break;
+              }
+            }
+          }
+          // ── Auto-Stop: Drehmodus stoppen wenn alle Timer/CDs enden ──────────────
+          if (id(dr_auto_stop_armed) && id(dr_aktiv)) {
+            bool any_running = false;
+            for (int _j = 0; _j < 6; _j++) {
+              if (id(slot_status)[_j] == 1) { any_running = true; break; }
+            }
+            if (!any_running) {
+              id(dr_auto_stop_armed) = false;
+              ESP_LOGI("drehen", "Auto-Stop: alle Timer beendet, stoppe Drehmodus");
+              id(script_drehen_stop)->execute();
+            }
+          }
+      # ── Hintergrundsymbole: Stopuhr ↔ Countdown per bg_image_src ──
+      - if:
+          condition:
+            lambda: 'return id(slot_is_countdown)[0];'
+          then:
+            - lvgl.widget.update:
+                id: slot1_running_view
+                bg_image_src: img_countdown_bg
+          else:
+            - lvgl.widget.update:
+                id: slot1_running_view
+                bg_image_src: img_stopwatch_bg
+      - if:
+          condition:
+            lambda: 'return id(slot_is_countdown)[1];'
+          then:
+            - lvgl.widget.update:
+                id: slot2_running_view
+                bg_image_src: img_countdown_bg
+          else:
+            - lvgl.widget.update:
+                id: slot2_running_view
+                bg_image_src: img_stopwatch_bg
+      - if:
+          condition:
+            lambda: 'return id(slot_is_countdown)[2];'
+          then:
+            - lvgl.widget.update:
+                id: slot3_running_view
+                bg_image_src: img_countdown_bg
+          else:
+            - lvgl.widget.update:
+                id: slot3_running_view
+                bg_image_src: img_stopwatch_bg
+      - if:
+          condition:
+            lambda: 'return id(slot_is_countdown)[3];'
+          then:
+            - lvgl.widget.update:
+                id: slot4_running_view
+                bg_image_src: img_countdown_bg
+          else:
+            - lvgl.widget.update:
+                id: slot4_running_view
+                bg_image_src: img_stopwatch_bg
+      - if:
+          condition:
+            lambda: 'return id(slot_is_countdown)[4];'
+          then:
+            - lvgl.widget.update:
+                id: slot5_running_view
+                bg_image_src: img_countdown_bg
+          else:
+            - lvgl.widget.update:
+                id: slot5_running_view
+                bg_image_src: img_stopwatch_bg
+      - if:
+          condition:
+            lambda: 'return id(slot_is_countdown)[5];'
+          then:
+            - lvgl.widget.update:
+                id: slot6_running_view
+                bg_image_src: img_countdown_bg
+          else:
+            - lvgl.widget.update:
+                id: slot6_running_view
+                bg_image_src: img_stopwatch_bg
+lvgl:
+  log_level: WARN
+  color_depth: 16
+
+  style_definitions:
+    # Aktions-Button: volle BG-Deckkraft, keine Border/Shadow/Outline/Padding
+    - id: style_action_btn
+      bg_opa: COVER
+      border_width: 0
+      shadow_width: 0
+      outline_width: 0
+      pad_all: 0
+    # Slot-Tab-Button: wie style_action_btn, aber zusätzlich radius: 0
+    - id: style_slot_tab
+      bg_opa: COVER
+      border_width: 0
+      shadow_width: 0
+      outline_width: 0
+      radius: 0
+      pad_all: 0
+    # Unsichtbarer Touch-Button: transparente Fläche ohne jede Dekoration
+    - id: style_invis_btn
+      bg_opa: 0%
+      border_width: 0
+      shadow_width: 0
+      outline_width: 0
+      radius: 0
+      pad_all: 0
+    # Transparenter Layout-Container: kein BG, keine Border, kein Padding
+    - id: style_transp_container
+      bg_opa: TRANSP
+      border_width: 0
+      pad_all: 0
+    # Sensor-Badge: runde Ecken, keine Border
+    - id: style_sensor_badge
+      radius: 8
+      border_width: 0
+    # Preset-Button: dunkelblau mit blauem Rand
+    - id: style_preset_btn
+      bg_color: 0x223355
+      border_width: 2
+      border_color: 0x4477AA
+      radius: 12
+    # Timer-Bereichs-Button (Slots 2–6): 40% Deckkraft, keine Dekoration, linkes Padding
+    - id: style_timer_area_btn
+      bg_opa: 40%
+      border_width: 0
+      shadow_width: 0
+      outline_width: 0
+      radius: 0
+      pad_left: 12
+      pad_top: 0
+      pad_right: 0
+      pad_bottom: 0
+
+  # Farbdefinitionen (Helles Design)
+  theme:
+    obj:
+      bg_color: 0xFFFFFF  # Weiß
+      text_color: 0x000000  # Schwarz
+
+  # Pages/Screens Definition
+  pages:
+    # ================================
+    # PAGE 1: Hauptseite / Start
+    # ================================
+    - id: page_main
+      widgets:
+        # Haupt-Container
+        - obj:
+            id: main_container
+            width: 1024
+            height: 600
+            bg_color: 0xFFFFFF  # Weiß
+            bg_opa: COVER
+            scrollable: false
+            scrollbar_mode: "off"
+            pad_all: 0
+            widgets:
+              # Titel oben mittig
+              - label:
+                  id: main_title
+                  text: "SCK Schwippschwenker"
+                  align: TOP_MID
+                  y: 20
+                  text_font: font_title
+                  text_color: 0x003366  # Dunkelblau
+                  text_align: CENTER
+
+              # Not-Aus Button oben links
+              - button:
+                  id: btn_stop_notaus
+                  width: 80
+                  height: 80
+                  align: TOP_LEFT
+                  x: 10
+                  y: 10
+                  radius: 8
+                  bg_color: 0xCC0000
+                  styles: style_action_btn
+                  on_click:
+                    - lambda: |-
+                        id(script_system_aus).execute();
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "Not-\nAus"
+                        text_font: font_tab
+                        text_color: 0xFFFFFF
+                        text_align: CENTER
+
+              # System-Schalter rechts oben: Long Press = EIN/AUS toggle (nur Climate)
+              # Short Press: keine Funktion mehr (dafür gibts den STOP-Button links)
+              - button:
+                  id: btn_system_power
+                  width: 80
+                  height: 80
+                  align: TOP_RIGHT
+                  x: -10
+                  y: 10
+                  radius: 40
+                  bg_color: 0xAA2200
+                  styles: style_action_btn
+                  on_long_press:
+                    - lambda: |-
+                        if (id(system_ein)) {
+                          id(script_system_aus).execute();
+                        } else {
+                          id(script_system_ein).execute();
+                        }
+                  widgets:
+                    - label:
+                        id: lbl_power_icon
+                        align: CENTER
+                        text: "\uF011"
+                        text_font: font_icons
+                        text_color: 0xFFFFFF
+              
+              # Auto-Motor-Button (rund, tangential 45° links oben am Ring)
+              # AN (auto_motorbetrieb=true):  grüner BG 0x00FF00, Pfeil+A weiß
+              # AUS (auto_motorbetrieb=false): dunkelgrauer BG, Pfeil hellgrau, A dunkelgrau
+              # Short: Toggle AN ↔ AUS
+              - button:
+                  id: btn_auto_motorbetrieb
+                  width: 80
+                  height: 80
+                  align: CENTER
+                  x: -156
+                  y: -136
+                  radius: 40
+                  bg_color: 0x00FF00
+                  styles: style_action_btn
+                  on_short_click:
+                    - lambda: |-
+                        id(auto_motorbetrieb) = !id(auto_motorbetrieb);
+                        if (id(auto_motorbetrieb)) {
+                          lv_obj_set_style_bg_color(id(btn_auto_motorbetrieb), lv_color_hex(0x00FF00), 0);
+                          lv_obj_set_style_text_color(id(lbl_auto_motorbetrieb_icon), lv_color_hex(0xFFFFFF), 0);
+                          lv_obj_set_style_text_color(id(lbl_auto_motorbetrieb_a), lv_color_hex(0xFFFFFF), 0);
+                        } else {
+                          lv_obj_set_style_bg_color(id(btn_auto_motorbetrieb), lv_color_hex(0x444444), 0);
+                          lv_obj_set_style_text_color(id(lbl_auto_motorbetrieb_icon), lv_color_hex(0xAAAAAA), 0);
+                          lv_obj_set_style_text_color(id(lbl_auto_motorbetrieb_a), lv_color_hex(0xAAAAAA), 0);
+                        }
+                  widgets:
+                    - label:  # Dreh-Icon: ~30% größer als Standard (52px), weiß (AN) / hellgrau (AUS)
+                        id: lbl_auto_motorbetrieb_icon
+                        align: CENTER
+                        text: "\uF021"
+                        text_font: font_icons_md
+                        text_color: 0xFFFFFF
+                    - label:  # A-Overlay: ~30% größer (36px), passt in Drehsymbol, weiß (AN) / dunkelgrau (AUS)
+                        id: lbl_auto_motorbetrieb_a
+                        align: CENTER
+                        text: "A"
+                        text_font: font_auto_a
+                        text_color: 0xFFFFFF
+
+              # Beckenfüllungs-Button (rund, tangential 45° rechts unten am Ring)
+              # Modi: 0=AUS(grau), 1=MANUELL(blau), 2=AUTO(grün)
+              # Short: Cycle AUS→MANUELL→AUTO→AUS
+              # Long:  TURBO (dann zurück zum vorherigen Modus)
+              - button:
+                  id: btn_beckenfuellung
+                  width: 80
+                  height: 80
+                  align: CENTER
+                  x: 156
+                  y: 176
+                  radius: 40
+                  bg_color: 0x1a7a3a
+                  styles: style_action_btn
+                  on_short_click:
+                    - lambda: |-
+                        // Cycle: 0→1→2→0
+                        int naechster = (id(pumpe_a_modus) + 1) % 3;
+                        id(script_beckenpumpe_set_modus)->execute(naechster);
+                  on_long_press:
+                    - lambda: |-
+                        // TURBO: immer, script_pumpe_a_lang merkt Modus selbst
+                        id(script_pumpe_a_kurz).stop();
+                        id(script_pumpe_a_lang).execute();
+                  widgets:
+                    - label:  # Wellen-Icon: zentriert, semi-transparent als Hintergrund
+                        align: CENTER
+                        text: "\uF773"
+                        text_font: font_icons
+                        text_color: 0xFFFFFF
+                        text_opa: 45%
+                    - label:  # Modus-Overlay: A / M / leer (oben drüber); hellblau wenn aktiv, hellgrau wenn AUS
+                        id: lbl_pumpe_modus
+                        align: CENTER
+                        text: "A"
+                        text_font: font_arc_val
+                        text_color: 0xAADDFF
+
+              # Motorbetrieb-Steuerung: Großer runder Toggle-Button
+              - obj:
+                  id: motor_ring
+                  width: 360
+                  height: 360
+                  align: CENTER
+                  y: 20
+                  radius: 180
+                  bg_color: 0x2299CC
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  pad_all: 0
+                  scrollable: false
+                  scrollbar_mode: "off"
+                  widgets:
+                    # ── Ring-Border: als erstes Child → liegt unter allen anderen ──
+                    - obj:
+                        width: 360
+                        height: 360
+                        radius: 180
+                        bg_opa: 0%
+                        border_width: 6
+                        border_color: 0x4455AA
+                        align: CENTER
+                        clickable: false
+                        pad_all: 0
+                    - button:
+                        id: btn_motor_main
+                        width: 196
+                        height: 196
+                        align: CENTER
+                        radius: 98
+                        bg_color: 0x666666
+                        styles: style_action_btn
+                        on_short_click:
+                          - lambda: |-
+                              if (id(dr_aktiv)) {
+                                id(script_drehen_stop).execute();
+                              } else if (id(sw_aktiv)) {
+                                id(script_schwenker_stop).execute();
+                              } else if (id(dr_modus)) {
+                                id(script_drehen_start).execute();
+                              } else {
+                                id(script_schwenker_start).execute();
+                              }
+                        on_long_press:
+                          - script.execute: script_schwenker_settings_open
+                        widgets:
+                          - label:
+                              id: lbl_motor_icon
+                              align: CENTER
+                              text: "\uF021"
+                              text_font: font_icon_xl
+                              text_color: 0xFFFFFF
+                    # ── Slot-Marker: Kreise mit Slot-Farben, rotieren mit Motor-Winkel ──
+                    - button:
+                        id: ring_slot1_marker
+                        width: 70
+                        height: 70
+                        radius: 35
+                        bg_color: 0xFF8888
+                        bg_opa: COVER
+                        border_width: 6
+                        border_color: 0xFF0000
+                        pad_all: 0
+                        align: TOP_LEFT
+                        x: 145
+                        y: 280
+                        on_short_click:
+                          - lambda: |-
+                              int i = 0;
+                              if (id(bin_slot1_blink)->state) {
+                                id(bin_slot1_blink)->publish_state(false);
+                                lv_obj_set_style_bg_color(id(slot1_tab), lv_color_hex(0xFF0000), 0);
+                                id(slot_elapsed_ms)[i] = 0;
+                                id(slot_start_ms)[i] = 0;
+                                id(slot_status)[i] = 2;
+                                if (id(slot_is_countdown)[i]) {
+                                  uint32_t s = id(slot_countdown_max_ms)[i] / 1000;
+                                  char rb[8]; snprintf(rb, sizeof(rb), "%02u:%02u", (unsigned)(s/60), (unsigned)(s%60));
+                                  lv_label_set_text(id(lbl_slot1_time), rb);
+                                } else { lv_label_set_text(id(lbl_slot1_time), "00:00"); }
+                                lv_label_set_text(id(lbl_slot1_symbol), "\xef\x81\x8b");
+                              }
+                              id(script_schwenker_goto_slot)->execute(1);
+                        widgets:
+                          - label:
+                              text: "1"
+                              align: CENTER
+                              text_font: font_default_40px
+                              text_color: 0x880000
+                    - button:
+                        id: ring_slot2_marker
+                        width: 70
+                        height: 70
+                        radius: 35
+                        bg_color: 0xFFFF88
+                        bg_opa: COVER
+                        border_width: 6
+                        border_color: 0xFFFF00
+                        pad_all: 0
+                        align: TOP_LEFT
+                        x: 28
+                        y: 213
+                        on_short_click:
+                          - lambda: |-
+                              int i = 1;
+                              if (id(bin_slot2_blink)->state) {
+                                id(bin_slot2_blink)->publish_state(false);
+                                lv_obj_set_style_bg_color(id(slot2_tab), lv_color_hex(0xFFFF00), 0);
+                                id(slot_elapsed_ms)[i] = 0;
+                                id(slot_start_ms)[i] = 0;
+                                id(slot_status)[i] = 2;
+                                if (id(slot_is_countdown)[i]) {
+                                  uint32_t s = id(slot_countdown_max_ms)[i] / 1000;
+                                  char rb[8]; snprintf(rb, sizeof(rb), "%02u:%02u", (unsigned)(s/60), (unsigned)(s%60));
+                                  lv_label_set_text(id(lbl_slot2_time), rb);
+                                } else { lv_label_set_text(id(lbl_slot2_time), "00:00"); }
+                                lv_label_set_text(id(lbl_slot2_symbol), "\xef\x81\x8b");
+                              }
+                              id(script_schwenker_goto_slot)->execute(2);
+                        widgets:
+                          - label:
+                              text: "2"
+                              align: CENTER
+                              text_font: font_default_40px
+                              text_color: 0x000000
+                    - button:
+                        id: ring_slot3_marker
+                        width: 70
+                        height: 70
+                        radius: 35
+                        bg_color: 0x88FF88
+                        bg_opa: COVER
+                        border_width: 6
+                        border_color: 0x00FF00
+                        pad_all: 0
+                        align: TOP_LEFT
+                        x: 28
+                        y: 78
+                        on_short_click:
+                          - lambda: |-
+                              int i = 2;
+                              if (id(bin_slot3_blink)->state) {
+                                id(bin_slot3_blink)->publish_state(false);
+                                lv_obj_set_style_bg_color(id(slot3_tab), lv_color_hex(0x00FF00), 0);
+                                id(slot_elapsed_ms)[i] = 0;
+                                id(slot_start_ms)[i] = 0;
+                                id(slot_status)[i] = 2;
+                                if (id(slot_is_countdown)[i]) {
+                                  uint32_t s = id(slot_countdown_max_ms)[i] / 1000;
+                                  char rb[8]; snprintf(rb, sizeof(rb), "%02u:%02u", (unsigned)(s/60), (unsigned)(s%60));
+                                  lv_label_set_text(id(lbl_slot3_time), rb);
+                                } else { lv_label_set_text(id(lbl_slot3_time), "00:00"); }
+                                lv_label_set_text(id(lbl_slot3_symbol), "\xef\x81\x8b");
+                              }
+                              id(script_schwenker_goto_slot)->execute(3);
+                        widgets:
+                          - label:
+                              text: "3"
+                              align: CENTER
+                              text_font: font_default_40px
+                              text_color: 0x000000
+                    - button:
+                        id: ring_slot4_marker
+                        width: 70
+                        height: 70
+                        radius: 35
+                        bg_color: 0x88FFFF
+                        bg_opa: COVER
+                        border_width: 6
+                        border_color: 0x00FFFF
+                        pad_all: 0
+                        align: TOP_LEFT
+                        x: 145
+                        y: 10
+                        on_short_click:
+                          - lambda: |-
+                              int i = 3;
+                              if (id(bin_slot4_blink)->state) {
+                                id(bin_slot4_blink)->publish_state(false);
+                                lv_obj_set_style_bg_color(id(slot4_tab), lv_color_hex(0x00FFFF), 0);
+                                id(slot_elapsed_ms)[i] = 0;
+                                id(slot_start_ms)[i] = 0;
+                                id(slot_status)[i] = 2;
+                                if (id(slot_is_countdown)[i]) {
+                                  uint32_t s = id(slot_countdown_max_ms)[i] / 1000;
+                                  char rb[8]; snprintf(rb, sizeof(rb), "%02u:%02u", (unsigned)(s/60), (unsigned)(s%60));
+                                  lv_label_set_text(id(lbl_slot4_time), rb);
+                                } else { lv_label_set_text(id(lbl_slot4_time), "00:00"); }
+                                lv_label_set_text(id(lbl_slot4_symbol), "\xef\x81\x8b");
+                              }
+                              id(script_schwenker_goto_slot)->execute(4);
+                        widgets:
+                          - label:
+                              text: "4"
+                              align: CENTER
+                              text_font: font_default_40px
+                              text_color: 0x000000
+                    - button:
+                        id: ring_slot5_marker
+                        width: 70
+                        height: 70
+                        radius: 35
+                        bg_color: 0x8888FF
+                        bg_opa: COVER
+                        border_width: 6
+                        border_color: 0x0000FF
+                        pad_all: 0
+                        align: TOP_LEFT
+                        x: 262
+                        y: 78
+                        on_short_click:
+                          - lambda: |-
+                              int i = 4;
+                              if (id(bin_slot5_blink)->state) {
+                                id(bin_slot5_blink)->publish_state(false);
+                                lv_obj_set_style_bg_color(id(slot5_tab), lv_color_hex(0x0000FF), 0);
+                                id(slot_elapsed_ms)[i] = 0;
+                                id(slot_start_ms)[i] = 0;
+                                id(slot_status)[i] = 2;
+                                if (id(slot_is_countdown)[i]) {
+                                  uint32_t s = id(slot_countdown_max_ms)[i] / 1000;
+                                  char rb[8]; snprintf(rb, sizeof(rb), "%02u:%02u", (unsigned)(s/60), (unsigned)(s%60));
+                                  lv_label_set_text(id(lbl_slot5_time), rb);
+                                } else { lv_label_set_text(id(lbl_slot5_time), "00:00"); }
+                                lv_label_set_text(id(lbl_slot5_symbol), "\xef\x81\x8b");
+                              }
+                              id(script_schwenker_goto_slot)->execute(5);
+                        widgets:
+                          - label:
+                              text: "5"
+                              align: CENTER
+                              text_font: font_default_40px
+                              text_color: 0x000088
+                    - button:
+                        id: ring_slot6_marker
+                        width: 70
+                        height: 70
+                        radius: 35
+                        bg_color: 0xFF88FF
+                        bg_opa: COVER
+                        border_width: 6
+                        border_color: 0xFF00FF
+                        pad_all: 0
+                        align: TOP_LEFT
+                        x: 262
+                        y: 213
+                        on_short_click:
+                          - lambda: |-
+                              int i = 5;
+                              if (id(bin_slot6_blink)->state) {
+                                id(bin_slot6_blink)->publish_state(false);
+                                lv_obj_set_style_bg_color(id(slot6_tab), lv_color_hex(0xFF00FF), 0);
+                                id(slot_elapsed_ms)[i] = 0;
+                                id(slot_start_ms)[i] = 0;
+                                id(slot_status)[i] = 2;
+                                if (id(slot_is_countdown)[i]) {
+                                  uint32_t s = id(slot_countdown_max_ms)[i] / 1000;
+                                  char rb[8]; snprintf(rb, sizeof(rb), "%02u:%02u", (unsigned)(s/60), (unsigned)(s%60));
+                                  lv_label_set_text(id(lbl_slot6_time), rb);
+                                } else { lv_label_set_text(id(lbl_slot6_time), "00:00"); }
+                                lv_label_set_text(id(lbl_slot6_symbol), "\xef\x81\x8b");
+                              }
+                              id(script_schwenker_goto_slot)->execute(6);
+                        widgets:
+                          - label:
+                              text: "6"
+                              align: CENTER
+                              text_font: font_default_40px
+                              text_color: 0x880088
+
+              # ---- Slot-Container links: Slot 1 (R), 2 (Y), 3 (G) ----
+              - obj:
+                  id: slot1_red
+                  width: 290
+                  height: 120
+                  align: TOP_LEFT
+                  x: 15
+                  y: 110
+                  radius: 16
+                  clip_corner: true
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - button:
+                        id: slot1_tab
+                        width: 60
+                        height: 100%
+                        align: TOP_LEFT
+                        x: 0
+                        y: 0
+                        bg_color: 0xFF0000
+                        styles: style_slot_tab
+                        on_press:
+                          - lambda: |-
+                              ESP_LOGI("slot", "Goto Slot 1 (0 Grad)");
+                              id(script_schwenker_goto_slot)->execute(1);
+                        widgets:
+                          - label:
+                              text: "1"
+                              align: CENTER
+                              text_font: font_normal
+                              text_color: 0xFFFFFF
+                    - obj:
+                        id: slot1_timer_area
+                        width: 230
+                        height: 100%
+                        align: TOP_RIGHT
+                        x: 0
+                        y: 0
+                        bg_color: 0xFF0000
+                        bg_opa: 40%
+                        border_width: 0
+                        radius: 0
+                        pad_all: 0
+                        scrollable: false
+                        clickable: false
+                        widgets:
+                          # ── Default-Ansicht: Stoppuhr + Countdown-Symbole ──────────────────
+                          - obj:
+                              id: slot1_default_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              scrollable: false
+                              clickable: false
+                              widgets:
+                                - button:
+                                    id: slot1_btn_stopwatch
+                                    width: 105
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_slot_start
+                                          slot_idx: 0
+                                    widgets:
+                                      - image:
+                                          src: img_stopwatch
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                                - button:
+                                    id: slot1_btn_countdown
+                                    width: 105
+                                    height: 100%
+                                    align: RIGHT_MID
+                                    x: -5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 0
+                                          mode: 0
+                                    widgets:
+                                      - image:
+                                          src: img_countdown
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                          # ── Laufend-Ansicht: Zeit + X ─────────────────────────────────────
+                          - obj:
+                              id: slot1_running_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              bg_image_src: img_stopwatch_bg
+                              bg_image_opa: 20%
+                              scrollable: false
+                              clickable: false
+                              hidden: true
+                              widgets:
+                                - button:
+                                    id: slot1_running_touch
+                                    width: 178
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 0
+                                    styles: style_invis_btn
+                                    pad_left: 8
+                                    on_short_click:
+                                      - lambda: |-
+                                          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+                                            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+                                            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink)
+                                          };
+                                          if (blink_s[0]->state) {
+                                            blink_s[0]->publish_state(false);
+                                            if (id(auto_motorbetrieb)) id(script_schwenker_goto_slot)->execute(1);
+                                          } else {
+                                            id(script_slot_pause_resume)->execute(0);
+                                          }
+                                    on_long_press:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 0
+                                          mode: 1
+                                    widgets:
+                                      - label:
+                                          id: lbl_slot1_timer_title
+                                          text: "Timer"
+                                          hidden: true
+                                          text_font: font_small
+                                          text_color: 0x000000
+                                          align: TOP_LEFT
+                                          x: 0
+                                          y: 0
+                                      - label:
+                                          id: lbl_slot1_time
+                                          text: "00:00"
+                                          align: CENTER
+                                          x: 0
+                                          y: 0
+                                          text_font: font_timer
+                                          text_color: 0x000000
+                                - button:
+                                    id: btn_slot1_stop
+                                    width: 50
+                                    height: 50
+                                    align: RIGHT_MID
+                                    x: -2
+                                    bg_color: 0x440000
+                                    radius: 6
+                                    styles: style_action_btn
+                                    on_click:
+                                      - script.execute:
+                                          id: script_slot_stop
+                                          slot_idx: 0
+                                    widgets:
+                                      - label:
+                                          align: CENTER
+                                          text: "\uF00D"
+                                          text_font: font_icons
+                                          text_color: 0xFFFFFF
+                          # Hidden label für Interval-Loop-Kompatibilität
+                          - label:
+                              id: lbl_slot1_symbol
+                              hidden: true
+                              text: "\uF04B"
+                              text_font: font_icons
+                              text_color: 0x000000
+                              align: RIGHT_MID
+                              x: -17
+              - obj:
+                  id: slot2_yellow
+                  width: 290
+                  height: 120
+                  align: TOP_LEFT
+                  x: 15
+                  y: 250
+                  radius: 16
+                  clip_corner: true
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - button:
+                        id: slot2_tab
+                        width: 60
+                        height: 100%
+                        align: TOP_LEFT
+                        x: 0
+                        y: 0
+                        bg_color: 0xFFFF00
+                        styles: style_slot_tab
+                        on_press:
+                          - lambda: |-
+                              ESP_LOGI("slot", "Goto Slot 2 (60 Grad)");
+                              id(script_schwenker_goto_slot)->execute(2);
+                        widgets:
+                          - label:
+                              text: "2"
+                              align: CENTER
+                              text_font: font_normal
+                              text_color: 0x000000
+                    - obj:
+                        id: slot2_timer_area
+                        width: 230
+                        height: 100%
+                        align: TOP_RIGHT
+                        x: 0
+                        y: 0
+                        bg_color: 0xFFFF00
+                        bg_opa: 40%
+                        border_width: 0
+                        radius: 0
+                        pad_all: 0
+                        scrollable: false
+                        clickable: false
+                        widgets:
+                          # ── Default-Ansicht: Stoppuhr + Countdown-Symbole ──────────────────
+                          - obj:
+                              id: slot2_default_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              scrollable: false
+                              clickable: false
+                              widgets:
+                                - button:
+                                    id: slot2_btn_stopwatch
+                                    width: 105
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_slot_start
+                                          slot_idx: 1
+                                    widgets:
+                                      - image:
+                                          src: img_stopwatch
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                                - button:
+                                    id: slot2_btn_countdown
+                                    width: 105
+                                    height: 100%
+                                    align: RIGHT_MID
+                                    x: -5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 1
+                                          mode: 0
+                                    widgets:
+                                      - image:
+                                          src: img_countdown
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                          # ── Laufend-Ansicht: Zeit + X ─────────────────────────────────────
+                          - obj:
+                              id: slot2_running_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              bg_image_src: img_stopwatch_bg
+                              bg_image_opa: 20%
+                              scrollable: false
+                              clickable: false
+                              hidden: true
+                              widgets:
+                                - button:
+                                    id: slot2_running_touch
+                                    width: 178
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 0
+                                    styles: style_invis_btn
+                                    pad_left: 8
+                                    on_short_click:
+                                      - lambda: |-
+                                          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+                                            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+                                            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink)
+                                          };
+                                          if (blink_s[1]->state) {
+                                            blink_s[1]->publish_state(false);
+                                            if (id(auto_motorbetrieb)) id(script_schwenker_goto_slot)->execute(2);
+                                          } else {
+                                            id(script_slot_pause_resume)->execute(1);
+                                          }
+                                    on_long_press:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 1
+                                          mode: 1
+                                    widgets:
+                                      - label:
+                                          id: lbl_slot2_timer_title
+                                          text: "Timer"
+                                          hidden: true
+                                          text_font: font_small
+                                          text_color: 0x000000
+                                          align: TOP_LEFT
+                                          x: 0
+                                          y: 0
+                                      - label:
+                                          id: lbl_slot2_time
+                                          text: "00:00"
+                                          align: CENTER
+                                          x: 0
+                                          y: 0
+                                          text_font: font_timer
+                                          text_color: 0x000000
+                                - button:
+                                    id: btn_slot2_stop
+                                    width: 50
+                                    height: 50
+                                    align: RIGHT_MID
+                                    x: -2
+                                    bg_color: 0x440000
+                                    radius: 6
+                                    styles: style_action_btn
+                                    on_click:
+                                      - script.execute:
+                                          id: script_slot_stop
+                                          slot_idx: 1
+                                    widgets:
+                                      - label:
+                                          align: CENTER
+                                          text: "\uF00D"
+                                          text_font: font_icons
+                                          text_color: 0xFFFFFF
+                          # Hidden label für Interval-Loop-Kompatibilität
+                          - label:
+                              id: lbl_slot2_symbol
+                              hidden: true
+                              text: "\uF04B"
+                              text_font: font_icons
+                              text_color: 0x000000
+                              align: RIGHT_MID
+                              x: -17
+              - obj:
+                  id: slot3_green
+                  width: 290
+                  height: 120
+                  align: TOP_LEFT
+                  x: 15
+                  y: 390
+                  radius: 16
+                  clip_corner: true
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - button:
+                        id: slot3_tab
+                        width: 60
+                        height: 100%
+                        align: TOP_LEFT
+                        x: 0
+                        y: 0
+                        bg_color: 0x00FF00
+                        styles: style_slot_tab
+                        on_press:
+                          - lambda: |-
+                              ESP_LOGI("slot", "Goto Slot 3 (120 Grad)");
+                              id(script_schwenker_goto_slot)->execute(3);
+                        widgets:
+                          - label:
+                              text: "3"
+                              align: CENTER
+                              text_font: font_normal
+                              text_color: 0x000000
+                    - obj:
+                        id: slot3_timer_area
+                        width: 230
+                        height: 100%
+                        align: TOP_RIGHT
+                        x: 0
+                        y: 0
+                        bg_color: 0x00FF00
+                        bg_opa: 40%
+                        border_width: 0
+                        radius: 0
+                        pad_all: 0
+                        scrollable: false
+                        clickable: false
+                        widgets:
+                          # ── Default-Ansicht: Stoppuhr + Countdown-Symbole ──────────────────
+                          - obj:
+                              id: slot3_default_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              scrollable: false
+                              clickable: false
+                              widgets:
+                                - button:
+                                    id: slot3_btn_stopwatch
+                                    width: 105
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_slot_start
+                                          slot_idx: 2
+                                    widgets:
+                                      - image:
+                                          src: img_stopwatch
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                                - button:
+                                    id: slot3_btn_countdown
+                                    width: 105
+                                    height: 100%
+                                    align: RIGHT_MID
+                                    x: -5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 2
+                                          mode: 0
+                                    widgets:
+                                      - image:
+                                          src: img_countdown
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                          # ── Laufend-Ansicht: Zeit + X ─────────────────────────────────────
+                          - obj:
+                              id: slot3_running_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              bg_image_src: img_stopwatch_bg
+                              bg_image_opa: 20%
+                              scrollable: false
+                              clickable: false
+                              hidden: true
+                              widgets:
+                                - button:
+                                    id: slot3_running_touch
+                                    width: 178
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 0
+                                    styles: style_invis_btn
+                                    pad_left: 8
+                                    on_short_click:
+                                      - lambda: |-
+                                          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+                                            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+                                            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink)
+                                          };
+                                          if (blink_s[2]->state) {
+                                            blink_s[2]->publish_state(false);
+                                            if (id(auto_motorbetrieb)) id(script_schwenker_goto_slot)->execute(3);
+                                          } else {
+                                            id(script_slot_pause_resume)->execute(2);
+                                          }
+                                    on_long_press:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 2
+                                          mode: 1
+                                    widgets:
+                                      - label:
+                                          id: lbl_slot3_timer_title
+                                          text: "Timer"
+                                          hidden: true
+                                          text_font: font_small
+                                          text_color: 0x000000
+                                          align: TOP_LEFT
+                                          x: 0
+                                          y: 0
+                                      - label:
+                                          id: lbl_slot3_time
+                                          text: "00:00"
+                                          align: CENTER
+                                          x: 0
+                                          y: 0
+                                          text_font: font_timer
+                                          text_color: 0x000000
+                                - button:
+                                    id: btn_slot3_stop
+                                    width: 50
+                                    height: 50
+                                    align: RIGHT_MID
+                                    x: -2
+                                    bg_color: 0x440000
+                                    radius: 6
+                                    styles: style_action_btn
+                                    on_click:
+                                      - script.execute:
+                                          id: script_slot_stop
+                                          slot_idx: 2
+                                    widgets:
+                                      - label:
+                                          align: CENTER
+                                          text: "\uF00D"
+                                          text_font: font_icons
+                                          text_color: 0xFFFFFF
+                          # Hidden label für Interval-Loop-Kompatibilität
+                          - label:
+                              id: lbl_slot3_symbol
+                              hidden: true
+                              text: "\uF04B"
+                              text_font: font_icons
+                              text_color: 0x000000
+                              align: RIGHT_MID
+                              x: -17
+
+              # ---- Slot-Container rechts: Slot 4 (C), 5 (B), 6 (M) ----
+              - obj:
+                  id: slot4_cyan
+                  width: 290
+                  height: 120
+                  align: TOP_RIGHT
+                  x: -15
+                  y: 110
+                  radius: 16
+                  clip_corner: true
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - button:
+                        id: slot4_tab
+                        width: 60
+                        height: 100%
+                        align: TOP_LEFT
+                        x: 0
+                        y: 0
+                        bg_color: 0x00FFFF
+                        styles: style_slot_tab
+                        on_press:
+                          - lambda: |-
+                              ESP_LOGI("slot", "Goto Slot 4 (180 Grad)");
+                              id(script_schwenker_goto_slot)->execute(4);
+                        widgets:
+                          - label:
+                              text: "4"
+                              align: CENTER
+                              text_font: font_normal
+                              text_color: 0x000000
+                    - obj:
+                        id: slot4_timer_area
+                        width: 230
+                        height: 100%
+                        align: TOP_RIGHT
+                        x: 0
+                        y: 0
+                        bg_color: 0x00FFFF
+                        bg_opa: 40%
+                        border_width: 0
+                        radius: 0
+                        pad_all: 0
+                        scrollable: false
+                        clickable: false
+                        widgets:
+                          # ── Default-Ansicht: Stoppuhr + Countdown-Symbole ──────────────────
+                          - obj:
+                              id: slot4_default_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              scrollable: false
+                              clickable: false
+                              widgets:
+                                - button:
+                                    id: slot4_btn_stopwatch
+                                    width: 105
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_slot_start
+                                          slot_idx: 3
+                                    widgets:
+                                      - image:
+                                          src: img_stopwatch
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                                - button:
+                                    id: slot4_btn_countdown
+                                    width: 105
+                                    height: 100%
+                                    align: RIGHT_MID
+                                    x: -5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 3
+                                          mode: 0
+                                    widgets:
+                                      - image:
+                                          src: img_countdown
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                          # ── Laufend-Ansicht: Zeit + X ─────────────────────────────────────
+                          - obj:
+                              id: slot4_running_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              bg_image_src: img_stopwatch_bg
+                              bg_image_opa: 20%
+                              scrollable: false
+                              clickable: false
+                              hidden: true
+                              widgets:
+                                - button:
+                                    id: slot4_running_touch
+                                    width: 178
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 0
+                                    styles: style_invis_btn
+                                    pad_left: 8
+                                    on_short_click:
+                                      - lambda: |-
+                                          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+                                            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+                                            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink)
+                                          };
+                                          if (blink_s[3]->state) {
+                                            blink_s[3]->publish_state(false);
+                                            if (id(auto_motorbetrieb)) id(script_schwenker_goto_slot)->execute(4);
+                                          } else {
+                                            id(script_slot_pause_resume)->execute(3);
+                                          }
+                                    on_long_press:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 3
+                                          mode: 1
+                                    widgets:
+                                      - label:
+                                          id: lbl_slot4_timer_title
+                                          text: "Timer"
+                                          hidden: true
+                                          text_font: font_small
+                                          text_color: 0x000000
+                                          align: TOP_LEFT
+                                          x: 0
+                                          y: 0
+                                      - label:
+                                          id: lbl_slot4_time
+                                          text: "00:00"
+                                          align: CENTER
+                                          x: 0
+                                          y: 0
+                                          text_font: font_timer
+                                          text_color: 0x000000
+                                - button:
+                                    id: btn_slot4_stop
+                                    width: 50
+                                    height: 50
+                                    align: RIGHT_MID
+                                    x: -2
+                                    bg_color: 0x440000
+                                    radius: 6
+                                    styles: style_action_btn
+                                    on_click:
+                                      - script.execute:
+                                          id: script_slot_stop
+                                          slot_idx: 3
+                                    widgets:
+                                      - label:
+                                          align: CENTER
+                                          text: "\uF00D"
+                                          text_font: font_icons
+                                          text_color: 0xFFFFFF
+                          # Hidden label für Interval-Loop-Kompatibilität
+                          - label:
+                              id: lbl_slot4_symbol
+                              hidden: true
+                              text: "\uF04B"
+                              text_font: font_icons
+                              text_color: 0x000000
+                              align: RIGHT_MID
+                              x: -17
+              - obj:
+                  id: slot5_blue
+                  width: 290
+                  height: 120
+                  align: TOP_RIGHT
+                  x: -15
+                  y: 250
+                  radius: 16
+                  clip_corner: true
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - button:
+                        id: slot5_tab
+                        width: 60
+                        height: 100%
+                        align: TOP_LEFT
+                        x: 0
+                        y: 0
+                        bg_color: 0x0000FF
+                        styles: style_slot_tab
+                        on_press:
+                          - lambda: |-
+                              ESP_LOGI("slot", "Goto Slot 5 (240 Grad)");
+                              id(script_schwenker_goto_slot)->execute(5);
+                        widgets:
+                          - label:
+                              text: "5"
+                              align: CENTER
+                              text_font: font_normal
+                              text_color: 0xFFFFFF
+                    - obj:
+                        id: slot5_timer_area
+                        width: 230
+                        height: 100%
+                        align: TOP_RIGHT
+                        x: 0
+                        y: 0
+                        bg_color: 0x0000FF
+                        bg_opa: 40%
+                        border_width: 0
+                        radius: 0
+                        pad_all: 0
+                        scrollable: false
+                        clickable: false
+                        widgets:
+                          # ── Default-Ansicht: Stoppuhr + Countdown-Symbole ──────────────────
+                          - obj:
+                              id: slot5_default_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              scrollable: false
+                              clickable: false
+                              widgets:
+                                - button:
+                                    id: slot5_btn_stopwatch
+                                    width: 105
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_slot_start
+                                          slot_idx: 4
+                                    widgets:
+                                      - image:
+                                          src: img_stopwatch
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                                - button:
+                                    id: slot5_btn_countdown
+                                    width: 105
+                                    height: 100%
+                                    align: RIGHT_MID
+                                    x: -5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 4
+                                          mode: 0
+                                    widgets:
+                                      - image:
+                                          src: img_countdown
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                          # ── Laufend-Ansicht: Zeit + X ─────────────────────────────────────
+                          - obj:
+                              id: slot5_running_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              bg_image_src: img_stopwatch_bg
+                              bg_image_opa: 20%
+                              scrollable: false
+                              clickable: false
+                              hidden: true
+                              widgets:
+                                - button:
+                                    id: slot5_running_touch
+                                    width: 178
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 0
+                                    styles: style_invis_btn
+                                    pad_left: 8
+                                    on_short_click:
+                                      - lambda: |-
+                                          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+                                            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+                                            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink)
+                                          };
+                                          if (blink_s[4]->state) {
+                                            blink_s[4]->publish_state(false);
+                                            if (id(auto_motorbetrieb)) id(script_schwenker_goto_slot)->execute(5);
+                                          } else {
+                                            id(script_slot_pause_resume)->execute(4);
+                                          }
+                                    on_long_press:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 4
+                                          mode: 1
+                                    widgets:
+                                      - label:
+                                          id: lbl_slot5_timer_title
+                                          text: "Timer"
+                                          hidden: true
+                                          text_font: font_small
+                                          text_color: 0xFFFFFF
+                                          align: TOP_LEFT
+                                          x: 0
+                                          y: 0
+                                      - label:
+                                          id: lbl_slot5_time
+                                          text: "00:00"
+                                          align: CENTER
+                                          x: 0
+                                          y: 0
+                                          text_font: font_timer
+                                          text_color: 0xFFFFFF
+                                - button:
+                                    id: btn_slot5_stop
+                                    width: 50
+                                    height: 50
+                                    align: RIGHT_MID
+                                    x: -2
+                                    bg_color: 0x440000
+                                    radius: 6
+                                    styles: style_action_btn
+                                    on_click:
+                                      - script.execute:
+                                          id: script_slot_stop
+                                          slot_idx: 4
+                                    widgets:
+                                      - label:
+                                          align: CENTER
+                                          text: "\uF00D"
+                                          text_font: font_icons
+                                          text_color: 0xFFFFFF
+                          # Hidden label für Interval-Loop-Kompatibilität
+                          - label:
+                              id: lbl_slot5_symbol
+                              hidden: true
+                              text: "\uF04B"
+                              text_font: font_icons
+                              text_color: 0xFFFFFF
+                              align: RIGHT_MID
+                              x: -17
+              - obj:
+                  id: slot6_magenta
+                  width: 290
+                  height: 120
+                  align: TOP_RIGHT
+                  x: -15
+                  y: 390
+                  radius: 16
+                  clip_corner: true
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - button:
+                        id: slot6_tab
+                        width: 60
+                        height: 100%
+                        align: TOP_LEFT
+                        x: 0
+                        y: 0
+                        bg_color: 0xFF00FF
+                        styles: style_slot_tab
+                        on_press:
+                          - lambda: |-
+                              ESP_LOGI("slot", "Goto Slot 6 (300 Grad)");
+                              id(script_schwenker_goto_slot)->execute(6);
+                        widgets:
+                          - label:
+                              text: "6"
+                              align: CENTER
+                              text_font: font_normal
+                              text_color: 0xFFFFFF
+                    - obj:
+                        id: slot6_timer_area
+                        width: 230
+                        height: 100%
+                        align: TOP_RIGHT
+                        x: 0
+                        y: 0
+                        bg_color: 0xFF00FF
+                        bg_opa: 40%
+                        border_width: 0
+                        radius: 0
+                        pad_all: 0
+                        scrollable: false
+                        clickable: false
+                        widgets:
+                          # ── Default-Ansicht: Stoppuhr + Countdown-Symbole ──────────────────
+                          - obj:
+                              id: slot6_default_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              scrollable: false
+                              clickable: false
+                              widgets:
+                                - button:
+                                    id: slot6_btn_stopwatch
+                                    width: 105
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_slot_start
+                                          slot_idx: 5
+                                    widgets:
+                                      - image:
+                                          src: img_stopwatch
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                                - button:
+                                    id: slot6_btn_countdown
+                                    width: 105
+                                    height: 100%
+                                    align: RIGHT_MID
+                                    x: -5
+                                    styles: style_invis_btn
+                                    on_short_click:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 5
+                                          mode: 0
+                                    widgets:
+                                      - image:
+                                          src: img_countdown
+                                          align: CENTER
+                                          width: 60
+                                          height: 60
+                          # ── Laufend-Ansicht: Zeit + X ─────────────────────────────────────
+                          - obj:
+                              id: slot6_running_view
+                              width: 100%
+                              height: 100%
+                              styles: style_transp_container
+                              bg_image_src: img_stopwatch_bg
+                              bg_image_opa: 20%
+                              scrollable: false
+                              clickable: false
+                              hidden: true
+                              widgets:
+                                - button:
+                                    id: slot6_running_touch
+                                    width: 178
+                                    height: 100%
+                                    align: LEFT_MID
+                                    x: 0
+                                    styles: style_invis_btn
+                                    pad_left: 8
+                                    on_short_click:
+                                      - lambda: |-
+                                          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+                                            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+                                            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink)
+                                          };
+                                          if (blink_s[5]->state) {
+                                            blink_s[5]->publish_state(false);
+                                            if (id(auto_motorbetrieb)) id(script_schwenker_goto_slot)->execute(6);
+                                          } else {
+                                            id(script_slot_pause_resume)->execute(5);
+                                          }
+                                    on_long_press:
+                                      - script.execute:
+                                          id: script_open_countdown_overlay
+                                          slot_idx: 5
+                                          mode: 1
+                                    widgets:
+                                      - label:
+                                          id: lbl_slot6_timer_title
+                                          text: "Timer"
+                                          hidden: true
+                                          text_font: font_small
+                                          text_color: 0xFFFFFF
+                                          align: TOP_LEFT
+                                          x: 0
+                                          y: 0
+                                      - label:
+                                          id: lbl_slot6_time
+                                          text: "00:00"
+                                          align: CENTER
+                                          x: 0
+                                          y: 0
+                                          text_font: font_timer
+                                          text_color: 0xFFFFFF
+                                - button:
+                                    id: btn_slot6_stop
+                                    width: 50
+                                    height: 50
+                                    align: RIGHT_MID
+                                    x: -2
+                                    bg_color: 0x440000
+                                    radius: 6
+                                    styles: style_action_btn
+                                    on_click:
+                                      - script.execute:
+                                          id: script_slot_stop
+                                          slot_idx: 5
+                                    widgets:
+                                      - label:
+                                          align: CENTER
+                                          text: "\uF00D"
+                                          text_font: font_icons
+                                          text_color: 0xFFFFFF
+                          # Hidden label für Interval-Loop-Kompatibilität
+                          - label:
+                              id: lbl_slot6_symbol
+                              hidden: true
+                              text: "\uF04B"
+                              text_font: font_icons
+                              text_color: 0xFFFFFF
+                              align: RIGHT_MID
+                              x: -17
+
+              # Statusleiste unten
+              - obj:
+                  id: status_bar
+                  width: 1024
+                  height: 60
+                  align: BOTTOM_MID
+                  y: 0
+                  bg_color: 0xF0F0F0
+                  bg_opa: COVER
+                  border_width: 0
+                  radius: 0
+                  scrollable: false
+                  widgets:
+                    # Uhrzeit-Block links (zweizeilig, zentriert im Block)
+                    - obj:
+                        id: clock_block
+                        width: size_content
+                        height: 58
+                        align: LEFT_MID
+                        x: 8
+                        bg_opa: TRANSP
+                        border_width: 0
+                        pad_top: 0
+                        pad_bottom: 0
+                        pad_left: 5
+                        pad_right: 5
+                        scrollable: false
+                        clickable: false
+                        widgets:
+                          - label:
+                              id: lbl_status_clock
+                              text: "--:--:--"
+                              text_font: font_clock
+                              align: TOP_LEFT
+                              x: 0
+                              y: 4
+                              text_color: 0x333333
+                          - label:
+                              id: lbl_status_date
+                              text: "---, --.--."
+                              text_font: font_clock
+                              align: BOTTOM_LEFT
+                              x: 0
+                              y: -4
+                              text_color: 0x555555
+                    # Temperatur (SHT4x) rechts neben Uhrzeit-Block
+                    - label:
+                        id: lbl_statusbar_temp
+                        text: !lambda |-
+                          if (isnan(id(sensor_sht4x_temp).state)) return std::string("--.-°C");
+                          char b[12];
+                          snprintf(b, sizeof(b), "%.1f°C", id(sensor_sht4x_temp).state);
+                          return std::string(b);
+                        text_font: font_default_40px
+                        align: LEFT_MID
+                        x: 230
+                        text_color: 0x333333
+                        clickable: true
+                        on_click:
+                          - lvgl.widget.show: overlay_sensorphalanx
+                    # Schneeflocken-Icon mittig (breiter Container für Badges darunter)
+                    - label:
+                        id: lbl_kompressor_icon
+                        text: "\uF2DC"
+                        text_font: font_icons
+                        align: CENTER
+                        y: -6
+                        text_color: 0xCCCCCC  # Grau = Kompressor aus
+                    # ED%-Badge unten links, überlagert Schneeflocke
+                    - obj:
+                        id: obj_ed_badge
+                        width: 50
+                        height: 22
+                        align: CENTER
+                        x: -27
+                        y: 18
+                        bg_color: 0x00274D
+                        bg_opa: 70%
+                        radius: 3
+                        border_width: 0
+                        scrollable: false
+                        widgets:
+                          - label:
+                              id: lbl_ed_pct
+                              text: "-"
+                              text_font: font_small
+                              text_color: 0xFFFFFF
+                              align: CENTER
+                    # ICE-Badge unten rechts neben ED, überlagert Schneeflocke (grau=aus, eisblau=aktiv)
+                    - obj:
+                        id: obj_eisbank_badge
+                        width: 44
+                        height: 22
+                        align: CENTER
+                        x: 27
+                        y: 18
+                        bg_color: 0x888888
+                        bg_opa: COVER
+                        radius: 3
+                        border_width: 0
+                        scrollable: false
+                        widgets:
+                          - label:
+                              id: lbl_eisbank_badge
+                              text: "ICE"
+                              text_font: font_small
+                              text_color: 0xFFFFFF
+                              align: CENTER
+                    # Becken-Temperatur mit Wasserwellen-Hintergrund
+                    - obj:
+                        id: obj_temp_becken_bg
+                        width: 165
+                        height: 56
+                        align: CENTER
+                        x: 145
+                        bg_color: 0xADE8F4
+                        bg_opa: COVER
+                        radius: 8
+                        border_width: 0
+                        pad_all: 0
+                        scrollable: false
+                        clickable: true
+                        on_click:
+                          - lvgl.widget.show: overlay_cooling
+                          - lambda: id(kuehl_chart_visible) = true;
+                          - script.execute: script_kuehl_chart_draw
+                        widgets:
+                          - label:
+                              text: "\uF773"
+                              text_font: font_icons
+                              align: LEFT_MID
+                              x: 6
+                              text_color: 0x70C9E0
+                          - label:
+                              id: lbl_temp_becken
+                              text: !lambda |-
+                                if (isnan(id(sensor_temp_becken).state)) return std::string("--.-°C");
+                                char b[12];
+                                snprintf(b, sizeof(b), "%.2f°C", id(sensor_temp_becken).state);
+                                return std::string(b);
+                              text_font: font_default_40px
+                              align: CENTER
+                              x: 20
+                              text_color: 0x003366
+                    # Kühl-Saldo: Leistung dem Getränk entzogen (W)
+                    - obj:
+                        id: obj_kuehlsaldo_bg
+                        width: 145
+                        height: 56
+                        align: CENTER
+                        x: 304
+                        bg_color: 0x70C9E0
+                        bg_opa: COVER
+                        radius: 8
+                        border_width: 0
+                        pad_all: 0
+                        scrollable: false
+                        widgets:
+                          - label:
+                              id: lbl_kuehlsaldo_getraenk
+                              text: "\uF72F"
+                              text_font: font_icons
+                              align: LEFT_MID
+                              x: 4
+                              text_color: 0xFFFFFF
+                              hidden: true
+                          - label:
+                              id: lbl_kuehlsaldo
+                              text: "---W"
+                              text_font: font_default_40px
+                              align: RIGHT_MID
+                              x: -6
+                              text_color: 0x003366
+                    # Standby-Indikator (Mond-Icon, nur sichtbar wenn Standby aktiv)
+                    - label:
+                        id: lbl_standby_icon
+                        text: "\uF186"
+                        text_font: font_icons
+                        text_color: 0x8899BB
+                        align: RIGHT_MID
+                        x: -72
+                        hidden: true
+
+                    # Einstellungen-Button rechts (Zahnrad-Icon)
+                    - button:
+                        id: btn_to_settings
+                        width: 60
+                        height: 54
+                        align: RIGHT_MID
+                        x: -4
+                        bg_color: 0x444444
+                        radius: 8
+                        widgets:
+                          - label:
+                              text: "\uF013"
+                              text_font: font_icons
+                              text_color: 0xFFFFFF
+                              align: CENTER
+                        on_click:
+                          - lvgl.page.show: page_settings
+
+    # ================================
+    # PAGE 2: Einstellungen
+    # ================================
+    - id: page_settings
+      widgets:
+        # Haupt-Container
+        - obj:
+            id: settings_container
+            width: 1024
+            height: 600
+            bg_color: 0xFFFFFF
+            bg_opa: COVER
+            scrollable: false
+            scrollbar_mode: "off"
+            widgets:
+              # Titel oben mittig
+              - label:
+                  id: settings_title
+                  text: "Einstellungen"
+                  align: TOP_MID
+                  y: 20
+                  text_font: font_title
+                  text_color: 0x003366
+                  text_align: CENTER
+
+              # Tab-Ansicht
+              - tabview:
+                  id: settings_tabs
+                  width: 1024
+                  height: 490
+                  align: TOP_MID
+                  y: 100
+                  scrollable: false
+                  scrollbar_mode: "off"
+                  tab_style:
+                    bg_color: 0xE0E0E0
+                    text_font: font_tab
+                    text_color: 0x000000
+                  tabs:
+                    # Tab 1: System
+                    - name: "System"
+                      id: tab_system
+                      scrollable: true
+                      widgets:
+                        # Overlays
+                        - obj:
+                            id: row_overlays
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 20
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  id: lbl_overlays
+                                  text: "Overlays:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - button:
+                                  id: btn_amg_live
+                                  width: 220
+                                  height: 60
+                                  align: LEFT_MID
+                                  x: 200
+                                  bg_color: 0x334466
+                                  widgets:
+                                    - label:
+                                        text: "AMG8833 Live"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                                  on_click:
+                                    - lambda: |-
+                                        amg_create_grid(id(amg_grid_container), 62);
+                                    - lvgl.widget.show: overlay_amg8833
+                              - button:
+                                  id: btn_sensorphalanx_live
+                                  width: 220
+                                  height: 60
+                                  align: LEFT_MID
+                                  x: 440
+                                  bg_color: 0x336644
+                                  widgets:
+                                    - label:
+                                        text: "Sensor-Phalanx"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                                  on_click:
+                                    - lvgl.widget.show: overlay_sensorphalanx
+
+                        # Zeile: Turmpumpe Label + Slider
+                        - obj:
+                            id: row_turmpumpe
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 110
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  id: lbl_turmpumpe
+                                  text: "Turmpumpe"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - slider:
+                                  id: slider_turmpumpe
+                                  width: 650
+                                  height: 20
+                                  align: RIGHT_MID
+                                  x: -10
+                                  min_value: 0
+                                  max_value: 100
+                                  value: 0
+                                  on_value:
+                                    - output.set_level:
+                                        id: output_pumpe_dacA
+                                        level: !lambda "return x / 100.0;"
+
+                        # Zeile: Umwälzpumpe Label + Slider (wird durch Thermostat gesteuert)
+                        - obj:
+                            id: row_umwaelzpumpe
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 200
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  id: lbl_umwaelzpumpe
+                                  text: "Umwälzpumpe"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - slider:
+                                  id: slider_umwaelzpumpe
+                                  width: 650
+                                  height: 20
+                                  align: RIGHT_MID
+                                  x: -10
+                                  min_value: 0
+                                  max_value: 100
+                                  value: 0
+                                  on_value:
+                                    - output.set_level:
+                                        id: output_pumpe_dacB
+                                        level: !lambda "return x / 100.0;"
+
+                        # Zeile: Motor Reboot (Soll=Ist Sync, bei versehentlich verdrehäm Neustart)
+                        - obj:
+                            id: row_motor_reboot
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 290
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Motor:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - button:
+                                  id: btn_motor_reboot
+                                  width: 220
+                                  height: 60
+                                  align: LEFT_MID
+                                  x: 200
+                                  bg_color: 0x884422
+                                  widgets:
+                                    - label:
+                                        text: "Motor Reboot"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                                  on_click:
+                                    - script.execute: script_motor_reboot
+
+                        # Build-Nummer (zum Verifizieren ob neue Firmware aktiv ist)
+                        - label:
+                            id: lbl_build_number
+                            text: "Build: 20260317-002"
+                            align: BOTTOM_RIGHT
+                            x: -20
+                            y: -15
+                            text_font: font_small
+                            text_color: 0xAAAAAA
+
+                    # Tab 2: Schwenker
+                    - name: "Schwenker"
+                      id: tab_schwenker
+                      scrollable: true
+                      widgets:
+                        # Einstellungen öffnen
+                        - button:
+                            id: btn_open_schwenker_settings
+                            width: 960
+                            height: 62
+                            align: TOP_MID
+                            y: 8
+                            bg_color: 0x223355
+                            border_width: 2
+                            border_color: 0x4477AA
+                            radius: 10
+                            widgets:
+                              - label:
+                                  text: "Schwenkereinstellungen"
+                                  align: LEFT_MID
+                                  x: 20
+                                  text_font: font_normal
+                                  text_color: 0xFFFFFF
+                              - label:
+                                  text: "\uF013"
+                                  align: RIGHT_MID
+                                  x: -20
+                                  text_font: font_icons
+                                  text_color: 0x99AACC
+                            on_click:
+                              - script.execute: script_schwenker_settings_open
+
+                        # Zeile: Motor-Steuerung
+                        - obj:
+                            id: row_motor_controls
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 90
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Motor:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - button:
+                                  id: btn_motor_freigeben
+                                  width: 220
+                                  height: 60
+                                  align: LEFT_MID
+                                  x: 200
+                                  bg_color: 0x445566
+                                  widgets:
+                                    - label:
+                                        text: "Motor freigeben"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                                  on_click:
+                                    - lambda: |-
+                                        id(can_bus)->send_data(${motor_can_id}, false,
+                                            add_crc(${motor_can_id}, { 0x82, 0x03 }));
+                              - button:
+                                  id: btn_motor_set_zero
+                                  width: 220
+                                  height: 60
+                                  align: LEFT_MID
+                                  x: 440
+                                  bg_color: 0x446655
+                                  widgets:
+                                    - label:
+                                        text: "Motor 0\u00B0 setzen"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                                  on_click:
+                                    - script.execute: script_motor_set_zero
+
+                        # Zeile: Trim-Slider ±45° → Motor folgt live; loslassen setzt 0°
+                        - obj:
+                            id: row_trim_slider
+                            width: 960
+                            height: 80
+                            align: TOP_MID
+                            y: 175
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "0\u00B0 setzen:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - label:
+                                  text: "-45\u00B0"
+                                  align: LEFT_MID
+                                  x: 190
+                                  text_font: font_small
+                                  text_color: 0x888888
+                              - label:
+                                  text: "+45\u00B0"
+                                  align: RIGHT_MID
+                                  x: -10
+                                  text_font: font_small
+                                  text_color: 0x888888
+                              - slider:
+                                  id: slider_trim_motor
+                                  width: 580
+                                  height: 30
+                                  align: LEFT_MID
+                                  x: 240
+                                  min_value: -45
+                                  max_value: 45
+                                  value: 0
+                                  on_value:
+                                    - lambda: |-
+                                        int new_val = x;
+                                        int delta = new_val - id(slider_trim_last);
+                                        if (delta != 0) {
+                                          id(sw_motor_busy) = true;
+                                          // Closed Loop + Work current vor jedem F4
+                                          id(can_bus)->send_data(${motor_can_id}, false,
+                                              add_crc(${motor_can_id}, { 0x82, 0x04 }));
+                                          int trim_cur = std::max(500, std::min(2000, id(sw_work_current_mA)));
+                                          uint8_t tc_h = (uint8_t)(trim_cur >> 8);
+                                          uint8_t tc_l = (uint8_t)(trim_cur & 0xFF);
+                                          id(can_bus)->send_data(${motor_can_id}, false,
+                                              add_crc(${motor_can_id}, { 0x83, tc_h, tc_l }));
+                                          uint8_t speed_h = 0;       // 60 RPM
+                                          uint8_t speed_l = 60;
+                                          uint8_t accel   = 80;
+                                          int32_t steps = (int32_t)lround((16384.0 / 360.0) * (double)delta);
+                                          uint32_t v24 = (uint32_t)steps & 0x00FFFFFFu;
+                                          uint8_t pr_hh = (v24 >> 16) & 0xFF;
+                                          uint8_t pr_h  = (v24 >>  8) & 0xFF;
+                                          uint8_t pr_l  =  v24        & 0xFF;
+                                          id(can_bus)->send_data(${motor_can_id}, false,
+                                            add_crc(${motor_can_id}, { 0xF4, speed_h, speed_l, accel, pr_hh, pr_h, pr_l }));
+                                          id(slider_trim_last) = new_val;
+                                        }
+                                  on_release:
+                                    - lambda: |-
+                                        id(slider_trim_last) = 0;
+                                        id(sw_motor_busy) = false;
+                                        id(sw_motor_last_move_ms) = millis();
+                                    - script.execute: script_motor_set_zero
+                                    - lvgl.slider.update:
+                                        id: slider_trim_motor
+                                        value: 0
+
+                        # Zeile: Motor Strom 500–2000 mA (einmalig senden)
+                        - obj:
+                            id: row_motor_strom
+                            width: 960
+                            height: 80
+                            align: TOP_MID
+                            y: 270
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Motor Strom:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - label:
+                                  text: "500mA"
+                                  align: LEFT_MID
+                                  x: 190
+                                  text_font: font_small
+                                  text_color: 0x888888
+                              - label:
+                                  text: "2000mA"
+                                  align: RIGHT_MID
+                                  x: -10
+                                  text_font: font_small
+                                  text_color: 0x888888
+                              - slider:
+                                  id: slider_motor_strom
+                                  width: 580
+                                  height: 30
+                                  align: LEFT_MID
+                                  x: 240
+                                  min_value: 500
+                                  max_value: 2000
+                                  value: 1000
+                                  on_release:
+                                    - lambda: |-
+                                        id(sw_work_current_mA) = (int)x;  // in NVS speichern
+                                        id(script_motor_set_work_current_mA).execute(x);
+                                        char buf[12];
+                                        snprintf(buf, sizeof(buf), "%d mA", (int)x);
+                                        lv_label_set_text(id(lbl_motor_strom_wert), buf);
+                                        ESP_LOGI("settings", "Motor Strom gesetzt: %d mA", (int)x);
+                              - label:
+                                  id: lbl_motor_strom_wert
+                                  text: "1000 mA"
+                                  align: RIGHT_MID
+                                  x: -75
+                                  text_font: font_normal
+                                  text_color: 0x003366
+
+                        # Zeile: Motor-Ramp (internes acc-Byte für 50ms-Stufenglättung)
+                        - obj:
+                            id: row_motor_ramp
+                            width: 960
+                            height: 80
+                            align: TOP_MID
+                            y: 360
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Motor Ramp:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - label:
+                                  text: "weich"
+                                  align: LEFT_MID
+                                  x: 190
+                                  text_font: font_small
+                                  text_color: 0x888888
+                              - label:
+                                  text: "hart"
+                                  align: RIGHT_MID
+                                  x: -10
+                                  text_font: font_small
+                                  text_color: 0x888888
+                              - slider:
+                                  id: slider_motor_ramp
+                                  width: 580
+                                  height: 30
+                                  align: LEFT_MID
+                                  x: 240
+                                  min_value: 1
+                                  max_value: 254
+                                  value: 200
+                                  on_release:
+                                    - lambda: |-
+                                        id(sw_motor_ramp) = (int)x;
+                                        char buf[8];
+                                        snprintf(buf, sizeof(buf), "%d", (int)x);
+                                        lv_label_set_text(id(lbl_motor_ramp_wert), buf);
+                              - label:
+                                  id: lbl_motor_ramp_wert
+                                  text: "200"
+                                  align: RIGHT_MID
+                                  x: -75
+                                  text_font: font_normal
+                                  text_color: 0x664400
+
+                    # Tab 3: Licht
+                    - name: "Licht"
+                      id: tab_licht
+                      scrollable: true
+                      widgets:
+                        # Zeile: Becken LED Ein / Aus
+                        - obj:
+                            id: row_led_strip_onoff
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 20
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Becken LED:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - button:
+                                  id: btn_led_strip_ein
+                                  width: 160
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 240
+                                  bg_color: 0x227722
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_outer).turn_on();
+                                        call.set_brightness(1.0f);
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "Ein"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                              - button:
+                                  id: btn_led_strip_aus
+                                  width: 160
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 420
+                                  bg_color: 0x772222
+                                  on_click:
+                                    - lambda: |-
+                                        id(light_slots_outer).turn_off().perform();
+                                  widgets:
+                                    - label:
+                                        text: "Aus"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+
+                        # Zeile: LED-Helligkeit
+                        - obj:
+                            id: row_led_helligkeit
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 110
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Helligkeit:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - slider:
+                                  id: slider_led_helligkeit
+                                  width: 590
+                                  height: 20
+                                  align: LEFT_MID
+                                  x: 240
+                                  min_value: 1
+                                  max_value: 100
+                                  value: 100
+                                  on_value:
+                                    - lambda: |-
+                                        if (!id(led_auto_updating)) {
+                                          id(led_auto_brightness) = false;
+                                          lv_obj_clear_state(id(sw_led_auto), LV_STATE_CHECKED);
+                                        }
+                                        auto call = id(light_slots_outer).make_call();
+                                        call.set_brightness((float)x / 100.0f);
+                                        call.perform();
+                                        lv_label_set_text_fmt(id(lbl_led_helligkeit_val), "%d%%", x);
+                              - label:
+                                  id: lbl_led_helligkeit_val
+                                  text: "100%"
+                                  align: LEFT_MID
+                                  x: 850
+                                  text_font: font_normal
+                                  text_color: 0x003366
+
+                        # Zeile: LED-Helligkeit Auto
+                        - obj:
+                            id: row_led_auto
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 200
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Auto (VEML7700):"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - switch:
+                                  id: sw_led_auto
+                                  align: LEFT_MID
+                                  x: 240
+                                  on_value:
+                                    - lambda: |-
+                                        if (!id(led_auto_updating)) {
+                                          id(led_auto_brightness) = x;
+                                          if (!x) {
+                                            // Auto aus: Slider wieder freigeben (nichts weiter)
+                                          }
+                                        }
+
+                        # Zeile: Effekt-Auswahl
+                        - obj:
+                            id: row_led_effekt
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 290
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Effekt:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - button:
+                                  id: btn_led_effekt_aus
+                                  width: 140
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 140
+                                  bg_color: 0x555555
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_outer).turn_on();
+                                        call.set_effect("None");
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "Aus"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                              - button:
+                                  id: btn_led_effekt_slot
+                                  width: 140
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 295
+                                  bg_color: 0x224488
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_outer).turn_on();
+                                        call.set_effect("Slot Colors");
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "Slot"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                              - button:
+                                  id: btn_led_effekt_slot_plus
+                                  width: 140
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 450
+                                  bg_color: 0x335599
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_outer).turn_on();
+                                        call.set_effect("Slot Colors on White");
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "Slot+"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                              - button:
+                                  id: btn_led_effekt_slot_mix
+                                  width: 140
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 605
+                                  bg_color: 0x446622
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_outer).turn_on();
+                                        call.set_effect("Slot Colors Mix");
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "Mix"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                              - button:
+                                  id: btn_led_effekt_strobo
+                                  width: 140
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 760
+                                  bg_color: 0x774400
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_outer).turn_on();
+                                        call.set_effect("Strobo");
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "Strobo"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+
+                        # Zeile: Hintergrundfarbe (für Effekt "Slot Colors on White")
+                        - obj:
+                            id: row_led_hintergrund
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 380
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Hintergrund:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - button:
+                                  id: btn_led_bg_weiss
+                                  width: 160
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 240
+                                  bg_color: 0xDDDDDD
+                                  border_width: 2
+                                  border_color: 0x888888
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_outer).turn_on();
+                                        call.set_rgb(1.0f, 1.0f, 1.0f);
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "Weiß"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0x000000
+                              - button:
+                                  id: btn_led_bg_blau
+                                  width: 160
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 420
+                                  bg_color: 0x0044CC
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_outer).turn_on();
+                                        call.set_rgb(0.0f, 0.27f, 0.8f);
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "Blau"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+
+                        # Zeile: Slot-LED-Breite
+                        - obj:
+                            id: row_slot_breite
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 470
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Slot-Breite:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - slider:
+                                  id: slider_slot_breite
+                                  width: 590
+                                  height: 20
+                                  align: LEFT_MID
+                                  x: 240
+                                  min_value: 1
+                                  max_value: 28
+                                  value: 9
+                                  on_value:
+                                    - lambda: |-
+                                        id(global_leds_per_slot) = (float)x;
+                                        id(sensor_leds_per_slot).publish_state((float)x);
+                                        lv_label_set_text_fmt(id(lbl_slot_breite_val), "%d", x);
+                              - label:
+                                  id: lbl_slot_breite_val
+                                  text: "9"
+                                  align: LEFT_MID
+                                  x: 850
+                                  text_font: font_normal
+                                  text_color: 0x003366
+
+                    - name: "Bildschirm"
+                      id: tab_bildschirm
+                      scrollable: true
+                      widgets:
+                        # Zeile: Helligkeit Label + Slider  (25% / 75%)
+                        - obj:
+                            id: row_helligkeit
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 20
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  id: lbl_helligkeit
+                                  text: "Helligkeit"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - slider:
+                                  id: slider_helligkeit
+                                  width: 710
+                                  height: 20
+                                  align: LEFT_MID
+                                  x: 240
+                                  min_value: 0
+                                  max_value: 100
+                                  value: 80
+                                  on_value:
+                                    - light.control:
+                                        id: light_screen_background
+                                        brightness: !lambda "return x / 100.0;"
+                                    - lambda: |-
+                                        // Manuelle Bedienung: Auto-Modus deaktivieren
+                                        if (!id(brightness_auto_updating)) {
+                                          id(brightness_auto_mode) = false;
+                                          lv_obj_clear_state(id(sw_brightness_auto), LV_STATE_CHECKED);
+                                        }
+
+                        # Auto-Button mit Switch — bündig mit Slider-Anfang (x=240)
+                        - button:
+                            id: btn_auto_helligkeit
+                            width: 210
+                            height: 50
+                            align: TOP_LEFT
+                            x: 240
+                            y: 100
+                            bg_color: 0x334466
+                            bg_opa: COVER
+                            border_width: 0
+                            radius: 10
+                            clickable: false
+                            widgets:
+                              - label:
+                                  text: "Auto"
+                                  align: LEFT_MID
+                                  x: 12
+                                  text_font: font_normal
+                                  text_color: 0xFFFFFF
+                              - switch:
+                                  id: sw_brightness_auto
+                                  align: RIGHT_MID
+                                  x: -12
+                                  on_value:
+                                    - lambda: |-
+                                        id(brightness_auto_mode) = x;
+
+                        # Farbtest-Quadrate (100 x 100)
+                        - obj:
+                            id: row_farben
+                            width: 960
+                            height: 120
+                            align: TOP_MID
+                            y: 175
+                            bg_opa: TRANSP
+                            border_width: 0
+                            widgets:
+                              - obj:
+                                  id: sq_red
+                                  width: 100
+                                  height: 100
+                                  align: CENTER
+                                  x: -120
+                                  bg_color: 0xFF0000
+                                  bg_opa: COVER
+                                  border_width: 0
+                              - obj:
+                                  id: sq_green
+                                  width: 100
+                                  height: 100
+                                  align: CENTER
+                                  x: 0
+                                  bg_color: 0x00FF00
+                                  bg_opa: COVER
+                                  border_width: 0
+                              - obj:
+                                  id: sq_blue
+                                  width: 100
+                                  height: 100
+                                  align: CENTER
+                                  x: 120
+                                  bg_color: 0x0000FF
+                                  bg_opa: COVER
+                                  border_width: 0
+
+                    # Tab 3: Kuehler
+                    - name: "Kühler"
+                      id: tab_kuehler
+                      scrollable: true
+                      widgets:
+                        # Zeile: Kühlung Ein/Aus  (25% / 75%)
+                        - obj:
+                            id: row_kuehlung
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 20
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  id: lbl_kuehlung
+                                  text: "Kühlung"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - switch:
+                                  id: sw_kuehlung
+                                  align: LEFT_MID
+                                  x: 240
+                                  on_value:
+                                    - lambda: |-
+                                        auto call = id(climate_thermostat).make_call();
+                                        if (x) {
+                                          call.set_mode(CLIMATE_MODE_COOL);
+                                        } else {
+                                          call.set_mode(CLIMATE_MODE_OFF);
+                                        }
+                                        call.perform();
+                        # Zeile: Temperatur Slider
+                        - obj:
+                            id: row_temp_slider
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 110
+                            bg_opa: TRANSP
+                            border_width: 0
+                            widgets:
+                              - label:
+                                  id: lbl_temp_soll
+                                  text: "Temperatur"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - slider:
+                                  id: slider_temp
+                                  width: 600
+                                  height: 20
+                                  align: RIGHT_MID
+                                  x: -70
+                                  min_value: 0
+                                  max_value: 50
+                                  value: 15
+                                  on_value:
+                                    - lambda: |-
+                                        char buf[8];
+                                        snprintf(buf, sizeof(buf), "%.1f°", x / 10.0f);
+                                        lv_label_set_text(id(lbl_temp_wert), buf);
+                                  on_release:
+                                    - lambda: |-
+                                        id(thermostat_ziel_x10) = x;  // Authority: thermostat_steuerung liest diesen Wert
+                                        char buf[8];
+                                        snprintf(buf, sizeof(buf), "%.1f°", x / 10.0f);
+                                        lv_label_set_text(id(lbl_temp_wert), buf);
+                              - label:
+                                  id: lbl_temp_wert
+                                  text: "1.5°"
+                                  align: RIGHT_MID
+                                  x: -10
+                                  text_font: font_normal
+                                  text_color: 0x003366
+                        # Zeile: Lüfter-Status
+                        - obj:
+                            id: row_luefter
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 280
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  id: lbl_luefter
+                                  text: "Lüfter"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - label:
+                                  id: lbl_luefter_wert
+                                  text: "-- %"
+                                  align: LEFT_MID
+                                  x: 240
+                                  text_font: font_normal
+                                  text_color: 0x003366
+                        # Preset-Tasten
+                        - obj:
+                            id: row_temp_presets
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 200
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - button:
+                                  id: btn_preset_1
+                                  width: 120
+                                  height: 50
+                                  align: LEFT_MID
+                                  x: 290
+                                  widgets:
+                                    - label:
+                                        text: "1°C"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                                  on_click:
+                                    - lambda: |-
+                                        id(thermostat_ziel_x10) = 10;
+                                        lv_slider_set_value(id(slider_temp), 10, LV_ANIM_OFF);
+                                        lv_label_set_text(id(lbl_temp_wert), "1.0°");
+                              - button:
+                                  id: btn_preset_15
+                                  width: 120
+                                  height: 50
+                                  align: LEFT_MID
+                                  x: 420
+                                  widgets:
+                                    - label:
+                                        text: "1.5°C"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                                  on_click:
+                                    - lambda: |-
+                                        id(thermostat_ziel_x10) = 15;
+                                        lv_slider_set_value(id(slider_temp), 15, LV_ANIM_OFF);
+                                        lv_label_set_text(id(lbl_temp_wert), "1.5°");
+                              - button:
+                                  id: btn_preset_5
+                                  width: 120
+                                  height: 50
+                                  align: LEFT_MID
+                                  x: 550
+                                  widgets:
+                                    - label:
+                                        text: "5°C"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                                  on_click:
+                                    - lambda: |-
+                                        id(thermostat_ziel_x10) = 50;
+                                        lv_slider_set_value(id(slider_temp), 50, LV_ANIM_OFF);
+                                        lv_label_set_text(id(lbl_temp_wert), "5.0°");
+
+                        # Zeile: Eisbank Ein/Aus + Status
+                        - obj:
+                            id: row_eisbank
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 370
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Eisbank"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - switch:
+                                  id: sw_eisbank_aktiv
+                                  align: LEFT_MID
+                                  x: 240
+                                  on_value:
+                                    - lambda: |-
+                                        id(icebank_enabled) = x;
+                                        if (!x && id(eisbank_laeuft)) {
+                                          id(eisbank_laeuft) = false;
+                                          id(eisbank_start_ms) = 0;
+                                          lv_label_set_text(id(lbl_eisbank_status), "");
+                                          lv_obj_set_style_bg_color(id(obj_eisbank_badge), lv_color_hex(0x888888), 0);
+                                          ESP_LOGI("eisbank", "Manuell gestoppt");
+                                        } else if (x) {
+                                          id(ice_run_allowed) = true;  // Schalter-Ein = Freigabe
+                                        }
+                              - label:
+                                  id: lbl_eisbank_status
+                                  text: ""
+                                  align: LEFT_MID
+                                  x: 450
+                                  text_font: font_normal
+                                  text_color: 0x0088FF
+
+                        # Zeile: Eisbank Dauer (0 = AUS, 1–30 Minuten)
+                        - obj:
+                            id: row_eisbank_dauer
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 460
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Dauer"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - slider:
+                                  id: slider_eisbank_dauer
+                                  width: 600
+                                  height: 20
+                                  align: RIGHT_MID
+                                  x: -70
+                                  min_value: 0
+                                  max_value: 30
+                                  value: 10
+                                  on_value:
+                                    - lambda: |-
+                                        int val = (int)lv_slider_get_value(id(slider_eisbank_dauer));
+                                        id(eisbank_dauer_min) = val;
+                                        if (val == 0) {
+                                          lv_label_set_text(id(lbl_eisbank_dauer_val), "AUS");
+                                        } else {
+                                          char buf[12];
+                                          snprintf(buf, sizeof(buf), "%d min", val);
+                                          lv_label_set_text(id(lbl_eisbank_dauer_val), buf);
+                                        }
+                              - label:
+                                  id: lbl_eisbank_dauer_val
+                                  text: "10 min"
+                                  align: RIGHT_MID
+                                  x: -10
+                                  text_font: font_normal
+                                  text_color: 0x003366
+
+                        # Zeile: Rückschlagventil (RV) Ein/Aus
+                        - obj:
+                            id: row_rv
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 550
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Rückschlagventil"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - switch:
+                                  id: sw_rv_aktiv
+                                  align: LEFT_MID
+                                  x: 240
+                                  on_value:
+                                    - lambda: |-
+                                        id(global_rv_aktiv) = x;
+                                        if (!x) {
+                                          // RV deaktiviert: laufenden Interval stoppen
+                                          id(rv_auto_phase_ms) = 0;
+                                          id(rv_auto_pump_on)  = false;
+                                        }
+                                        ESP_LOGI("rv", "RV %s", x ? "aktiv" : "inaktiv");
+
+                    # Tab 4: Info
+                    - name: "Info"
+                      id: tab_info
+                      scrollable: true
+                      widgets:
+                        - label:
+                            id: lbl_info_build
+                            x: 12
+                            y: 10
+                            text: !lambda |-
+                              char buf[80];
+                              snprintf(buf, sizeof(buf), "Build:  %s  %s\nESPHome %s", __DATE__, __TIME__, ESPHOME_VERSION);
+                              return std::string(buf);
+                            text_font: font_small
+                            text_color: 0xCCCCCC
+                        - label:
+                            id: lbl_info_wifi
+                            x: 12
+                            y: 64
+                            text: "WiFi IP:  ..."
+                            text_font: font_small
+                            text_color: 0xCCCCCC
+
+              # Schließen-Button (rechts oben, wie Overlays)
+              - button:
+                  id: btn_back
+                  width: 80
+                  height: 60
+                  align: TOP_RIGHT
+                  x: -10
+                  y: 10
+                  bg_color: 0xCC3333
+                  widgets:
+                    - label:
+                        text: "X"
+                        text_font: font_normal
+                        text_color: 0xFFFFFF
+                        align: CENTER
+                  on_click:
+                    - lvgl.page.show: page_main

@@ -1,0 +1,639 @@
+# ── Komponenten ──────────────────────────────────────────────────────────────────
+#  esphome:   on_boot  (init: Lichter, Sliders, LED-Helligkeit, bin_slot*_blink)
+#  time:      sntp_time
+#  mcp4728:   dac_output
+#  output:    output_pumpe_dacA, output_pumpe_dacB,
+#             output_luefter_kompressor_pwm, output_kompressor_relais
+#  i2c:       i2c_amg8833, temp_bridge
+#  globals:   amg_pixel_temps, kompressor_soll_ein
+#  sensor:    sensor_temp_becken, sensor_amg8833
+#  climate:   climate_thermostat
+#  script:    script_kompressor_delayed_start
+#  text_sensor: sensor_wifi_ip
+# ─────────────────────────────────────────────────────────────────────────────────
+
+esphome:
+  platformio_options:
+    build_flags:
+      # LVGL interner Heap: Standard 48KB reicht nicht für ~400 Widgets → auf 128KB erhöhen
+      - -DLV_MEM_SIZE=131072
+      # LVGL-Task-Stack auf 32 KB erhöhen (Standard: 8 KB → Stack-Overflow bei komplexen Lambdas)
+      - -DESPHOME_LVGL_TASK_STACK_SIZE=32768
+
+  on_boot:
+    - priority: -100        # nach LVGL- und Light-Init
+      then:
+        - light.control:
+            id: light_screen_background
+            brightness: 70%
+        - lambda: |-
+            id(brightness_auto_mode) = true;
+            lv_obj_add_state(id(sw_brightness_auto), LV_STATE_CHECKED);
+            id(led_auto_brightness) = true;
+            lv_obj_add_state(id(sw_led_auto), LV_STATE_CHECKED);
+            // Motor-Strom-Slider + Label aus NVS synchronisieren
+            int cur = std::max(500, std::min(2000, id(sw_work_current_mA)));
+            lv_slider_set_value(id(slider_motor_strom), cur, LV_ANIM_OFF);
+            char mbuf[12];
+            snprintf(mbuf, sizeof(mbuf), "%d mA", cur);
+            lv_label_set_text(id(lbl_motor_strom_wert), mbuf);
+            // Slot-Breite aus NVS in Sensor + Slider + Label laden
+            float lps = id(global_leds_per_slot);
+            if (isnan(lps) || lps < 1.0f || lps > 28.0f) lps = 9.0f;
+            id(sensor_leds_per_slot).publish_state(lps);
+            lv_slider_set_value(id(slider_slot_breite), (int)lps, LV_ANIM_OFF);
+            lv_label_set_text_fmt(id(lbl_slot_breite_val), "%d", (int)lps);
+            // Helligkeit-Slider aus wiederhergestelltem Light-State laden
+            float bri = id(light_slots_outer).remote_values.get_brightness();
+            int bri_pct = (int)(bri * 100.0f + 0.5f);
+            if (bri_pct < 1) bri_pct = 1;
+            if (bri_pct > 100) bri_pct = 100;
+            lv_slider_set_value(id(slider_led_helligkeit), bri_pct, LV_ANIM_OFF);
+            lv_label_set_text_fmt(id(lbl_led_helligkeit_val), "%d%%", bri_pct);
+            // Blink-Sensoren beim Start auf false initialisieren
+            id(bin_slot1_blink).publish_state(false);
+            id(bin_slot2_blink).publish_state(false);
+            id(bin_slot3_blink).publish_state(false);
+            id(bin_slot4_blink).publish_state(false);
+            id(bin_slot5_blink).publish_state(false);
+            id(bin_slot6_blink).publish_state(false);
+            // Startbildschirm-Icon nach gespeichertem Modus setzen
+            if (id(dr_modus)) {
+              lv_label_set_text(id(lbl_motor_icon), "\xef\x8b\xb9");  // U+F2F9 rotate-right (Drehen)
+            } else {
+              lv_label_set_text(id(lbl_motor_icon), "\xef\x80\xa1");  // U+F021 arrows-rotate (Schwenken)
+            }
+            // Pumpen-Button: immer auf AUTO starten
+            id(script_beckenpumpe_set_modus)->execute(2);
+            // Einstellungs-TabView: horizontales Wischen (Tab-Wechsel per Swipe) deaktivieren
+            // Vertikales Scrollen einzelner Tabs bleibt unberührt (separate child-Objekte)
+            lv_obj_set_scroll_dir(lv_tabview_get_content(id(settings_tabs)), LV_DIR_NONE);
+            // UI-Init: Slider und Label aus Authority-Global befüllen (Thermostat-Steuerung übernimmt per Intervall)
+            {
+              int ziel = id(thermostat_ziel_x10);
+              if (ziel < 1 || ziel > 50) ziel = 8;
+              lv_slider_set_value(id(slider_temp), ziel, LV_ANIM_OFF);
+              char buf[8];
+              snprintf(buf, sizeof(buf), "%.1f\xc2\xb0", ziel / 10.0f);
+              lv_label_set_text(id(lbl_temp_wert), buf);
+            }
+            // Eisbank-Schalter und Dauer-Slider aus NVS synchronisieren
+            if (id(icebank_enabled)) lv_obj_add_state(id(sw_eisbank_aktiv), LV_STATE_CHECKED);
+            else lv_obj_clear_state(id(sw_eisbank_aktiv), LV_STATE_CHECKED);
+            int edm = id(eisbank_dauer_min);
+            if (edm < 0) edm = 0; if (edm > 30) edm = 30;
+            lv_slider_set_value(id(slider_eisbank_dauer), edm, LV_ANIM_OFF);
+            if (edm == 0) lv_label_set_text(id(lbl_eisbank_dauer_val), "AUS");
+            else { char eb[12]; snprintf(eb, sizeof(eb), "%d min", edm); lv_label_set_text(id(lbl_eisbank_dauer_val), eb); }
+            // RV-Schalter aus NVS synchronisieren
+            if (id(global_rv_aktiv)) lv_obj_add_state(id(sw_rv_aktiv), LV_STATE_CHECKED);
+            else lv_obj_clear_state(id(sw_rv_aktiv), LV_STATE_CHECKED);
+
+    - priority: -150        # System in sicheren Aus-Zustand (Not-Aus beim Booten)
+      then:
+        - script.execute: script_system_aus
+    - priority: -160        # Pumpe nach system_aus wieder auf AUTO-Anzeige setzen
+      then:
+        - lambda: |-
+            id(script_beckenpumpe_set_modus)->execute(2);
+    - priority: -200        # nach allem anderen – Motor in Nullstellung
+      then:
+        - script.execute: script_motor_set_zero
+
+# ================================
+# Zeit über SNTP (NTP)
+# ================================
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: "Europe/Berlin"
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+
+mcp4728:
+  - id: dac_output
+    i2c_id: i2c_bus
+
+output:
+  # DAC Turmpumpe / Beckenfüllung (Channel A)
+  # Synonym: "Turmpumpe" (UI/Slider), "Beckenfüllung" (Skript-Kommentare), "Beckenpumpe" (script_beckenpumpe_set_modus) → alle meinen dieselbe Pumpe: output_pumpe_dacA
+  - platform: mcp4728
+    id: output_pumpe_dacA
+    mcp4728_id: dac_output
+    channel: A
+    vref: internal
+    gain: X2                  # → 4,096 V Max
+    power_down: normal
+    min_power: 0.15           # z. B. 20 % → ca. 0,82 V (je nach Kalibrierung)
+    max_power: 0.855          # ← das ist der entscheidende Wert
+    zero_means_zero: true
+
+  # DAC Umwälzpumpe (Channel B)
+  # Synonym: konsistent als "Umwälzpumpe" benannt → kein weiterer Alias
+  - platform: mcp4728
+    id: output_pumpe_dacB
+    mcp4728_id: dac_output
+    channel: B
+    vref: internal
+    gain: X2                  # → 4,096 V Max
+    power_down: normal
+    min_power: 0.15           # z. B. 20 % → ca. 0,82 V (je nach Kalibrierung)
+    max_power: 0.855          # ← das ist der entscheidende Wert
+    zero_means_zero: true
+
+  # PWM Lüftersteuerung (Kompressor-Lüfter)
+  # Arctic 14 Max: 4-Pin PWM, Open-Collector 5V-Spec (Intel).
+  # ESP32 (3.3V) reicht nicht direkt → Open-Drain + 10kΩ Pull-Up an 5V nötig.
+  - platform: ledc
+    id: output_luefter_kompressor_pwm
+    pin:
+      number: ${pin_pwm4}
+      mode:
+        output: true
+        open_drain: true
+    frequency: 25000 Hz
+    min_power: 0.0
+    zero_means_zero: true
+
+  # Kompressor-Relais Ein/Aus
+  - platform: gpio
+    id: output_kompressor_relais
+    pin: ${pin_pwm3}
+
+
+i2c_device:
+  - id: i2c_amg8833
+    address: 0x69
+    i2c_id: i2c_bus
+
+  # DS18B20 I²C-Bridge (ESP32-C3 Slave, Adresse 0x48)
+  - id: temp_bridge
+    address: 0x48
+    i2c_id: i2c_bus
+
+# TCA9548A I2C-Multiplexer (Adresse 0x70)
+tca9548a:
+  - id: i2c_mux
+    i2c_id: i2c_bus
+    address: 0x70
+    channels:
+      - bus_id: i2c_mux_ch0
+        channel: 0
+
+globals:
+  - id: amg_pixel_temps
+    type: std::array<float, 64>
+    restore_value: false
+    initial_value: '{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}'
+
+  # Kompressorschutz: zählt als Startwunsch während der 120s-Boot-Sperrzeit
+  - id: kompressor_soll_ein
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  # ED% (Einschaltdauer) Tracking
+  - id: kompressor_ein_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+  - id: kompressor_letzter_run_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+  - id: kompressor_aus_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+
+sensor:
+  # Becken-Temperatursensor DS18B20 via I²C-Bridge (ESP32-C3, Adresse 0x48)
+  - platform: template
+    id: sensor_temp_becken
+    name: "Temperatur Becken"
+    accuracy_decimals: 3
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    update_interval: 1s
+    filters:
+      - median:
+          window_size: 3
+          send_every: 1
+          send_first_at: 1
+    lambda: |-
+      uint8_t buf[2];
+      auto err = id(i2c_bus)->read(0x48, buf, 2);
+      if (err != i2c::ERROR_OK) return {};
+      int16_t raw = (int16_t)((buf[0] << 8) | buf[1]);
+      if (raw == (int16_t)0x8000) return {};
+      return roundf(raw / 16.0f * 20.0f) / 20.0f;  // auf 0.05°C runden
+    on_value:
+      - lvgl.widget.refresh: lbl_temp_becken
+      - script.execute: script_kuehl_update
+
+  # AMG8833 Infrarot-Temperatursensor (8x8 Matrix)
+  - platform: template
+    id: sensor_amg8833
+    name: "sensor_Temp_AMG8833"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      const float EMISSIVITY = 0.92;
+
+      // Ambient lesen (Chip-Thermistor)
+      uint8_t amb_buf[2];
+      float ambient = 25.0;  // Fallback
+      if (id(i2c_amg8833).read_register(0x0E, amb_buf, 2) == i2c::ERROR_OK) {
+        int16_t raw = (amb_buf[1] << 8) | amb_buf[0];
+        ambient = raw * 0.0625f;
+      } else {
+        ESP_LOGW("amg", "Ambient fehlgeschlagen → Fallback 25 °C");
+      }
+
+      // Pixel-Block lesen
+      uint8_t buf[128];
+      if (id(i2c_amg8833).read_register(0x80, buf, 128) != i2c::ERROR_OK) {
+        ESP_LOGE("amg", "Pixel-Read fehlgeschlagen");
+        return {};
+      }
+
+      // Min/Max finden
+      float min_t = 999.9f;
+      float max_t = -999.9f;
+      int min_idx = -1;
+      int max_idx = -1;
+
+      ESP_LOGI("amg", "┌────────────────────────────── 8×8 Matrix (raw) ──────────────────────────────┐");
+
+      char ln[100];
+      for (int r = 0; r < 8; r++) {
+        int p = snprintf(ln, sizeof(ln), "│ ");
+        for (int c = 0; c < 8; c++) {
+          int idx = r * 8 + c;
+          int o = idx * 2;
+          int16_t raw = (buf[o+1] << 8) | buf[o];
+          float t = (raw <= -2048 || raw >= 2048) ? NAN : raw * 0.25f;
+          if (!isnan(t)) {
+            if (t < min_t) { min_t = t; min_idx = idx; }
+            if (t > max_t) { max_t = t; max_idx = idx; }
+          }
+          const char* mark = " ";
+          if (idx == max_idx) mark = "+";
+          if (idx == min_idx) mark = "-";
+          p += snprintf(ln + p, sizeof(ln) - p, "%s%5.1f ", mark, isnan(t) ? 0.0f : t);
+        }
+        snprintf(ln + p, sizeof(ln) - p, "│");
+        ESP_LOGI("amg", "%s", ln);
+      }
+
+      ESP_LOGI("amg", "└────────────────────────────────────────────────────────────────────────────");
+
+      if (min_idx >= 0 && max_idx >= 0) {
+        ESP_LOGI("amg", " - Kältester: %.1f °C   (Zeile %d, Spalte %d)", min_t, min_idx/8+1, min_idx%8+1);
+        ESP_LOGI("amg", " + Wärmster : %.1f °C   (Zeile %d, Spalte %d)", max_t, max_idx/8+1, max_idx%8+1);
+      }
+
+      // Pixel-Temperaturen in global array schreiben
+      for (int idx = 0; idx < 64; idx++) {
+        int o = idx * 2;
+        int16_t raw = (buf[o+1] << 8) | buf[o];
+        id(amg_pixel_temps)[idx] = (raw > -2048 && raw < 2048) ? raw * 0.25f : 0.0f;
+      }
+
+      // Inneres 4×4 für Mittelwert (rows 2–5, cols 2–5)
+      float inner_sum = 0.0f;
+      int inner_count = 0;
+      for (int r = 2; r <= 5; r++) {
+        for (int c = 2; c <= 5; c++) {
+          int idx = r * 8 + c;
+          int o = idx * 2;
+          int16_t raw = (buf[o+1] << 8) | buf[o];
+          if (raw > -2048 && raw < 2048) {
+            float rt = raw * 0.25f;
+            float corr = ambient + (rt - ambient) / EMISSIVITY;
+            inner_sum += corr;
+            inner_count++;
+          }
+        }
+      }
+
+      if (inner_count == 0) {
+        ESP_LOGW("amg", "Keine gültigen Werte im inneren 4×4");
+        return {};
+      }
+
+      float avg = inner_sum / inner_count;
+      ESP_LOGD("amg", "Mittelwert (inneres 4×4, ε=%.2f): %.2f °C   (Ambient: %.1f °C, %d Pixel)",
+               EMISSIVITY, avg, ambient, inner_count);
+      return avg;
+
+climate:
+  - platform: thermostat
+    name: thermostat
+    id: climate_thermostat
+    sensor: sensor_temp_becken
+    min_cooling_off_time: 120s
+    min_cooling_run_time: 90s
+    min_idle_time: 30s
+    startup_delay: true
+    cool_deadband: ${c_thermostat_deadband} °C
+    cool_overrun: ${c_thermostat_overrun} °C
+    cool_action:
+      - lambda: |-
+          id(kompressor_soll_ein) = true;
+          if (millis() >= 120000) {
+            id(output_kompressor_relais).turn_on();
+          } else {
+            id(script_kompressor_delayed_start).execute();
+            ESP_LOGI("kompressor", "Schutz aktiv – Start verzögert (%.0f s verbleibend)",
+                     (120000.0f - millis()) / 1000.0f);
+          }
+      - output.set_level:
+          id: output_luefter_kompressor_pwm
+          level: "${fan_kompressor_max_perc}%"
+      - lambda: |-
+          // ED% Berechnung beim Wiedereinschalten
+          if (id(kompressor_aus_ms) > 0 && id(kompressor_letzter_run_ms) > 0) {
+            uint32_t aus_zeit = millis() - id(kompressor_aus_ms);
+            if (aus_zeit > 0) {
+              int ed = (int)((float)id(kompressor_letzter_run_ms) /
+                        ((float)id(kompressor_letzter_run_ms) + (float)aus_zeit) * 100.0f + 0.5f);
+              if (ed < 0) ed = 0;
+              if (ed > 100) ed = 100;
+              lv_label_set_text_fmt(id(lbl_ed_pct), "%d%%", ed);
+            }
+          }
+          id(kompressor_ein_ms) = millis();
+    idle_action:
+      - output.turn_off: output_kompressor_relais
+      - lambda: |-
+          id(kompressor_soll_ein) = false;
+          id(script_kompressor_delayed_start).stop();
+      - output.set_level:
+          id: output_luefter_kompressor_pwm
+          level: "${fan_kompressor_min_perc}%"
+      - lambda: |-
+          // ED% Tracking: Laufzeit speichern
+          if (id(kompressor_ein_ms) > 0) {
+            id(kompressor_letzter_run_ms) = millis() - id(kompressor_ein_ms);
+          }
+          id(kompressor_aus_ms) = millis();
+    default_preset: Eco
+    on_boot_restore_from: default_preset
+    preset:
+      - name: Eco
+        default_target_temperature_high: 5 °C
+      - name: Normal
+        default_target_temperature_high: 1.5 °C
+      - name: Cooling
+        default_target_temperature_high: -1 °C
+    visual:
+      min_temperature: -1
+      max_temperature: 5
+      temperature_step: 0.1
+    on_state:
+      - lvgl.label.update:
+          id: lbl_kompressor_icon
+          text_color: !lambda |-
+            if (id(climate_thermostat).action == CLIMATE_ACTION_COOLING) {
+              return lv_color_hex(0x0055FF); // Blau
+            }
+            return lv_color_hex(0xCCCCCC); // Grau
+      - lambda: |-
+          // Synchronisiere Kühlung-Switch mit aktuellem Climate-Mode
+          if (id(climate_thermostat).mode == CLIMATE_MODE_COOL) {
+            lv_obj_add_state(id(sw_kuehlung), LV_STATE_CHECKED);
+          } else {
+            lv_obj_clear_state(id(sw_kuehlung), LV_STATE_CHECKED);
+          }
+          // Lüfter-Prozentwert aktualisieren
+          char buf[12];
+          float perc = (id(climate_thermostat).action == CLIMATE_ACTION_COOLING)
+            ? ${fan_kompressor_max_perc}
+            : ${fan_kompressor_min_perc};
+          snprintf(buf, sizeof(buf), "%.0f %%", perc);
+          lv_label_set_text(id(lbl_luefter_wert), buf);
+      - lambda: |-
+          // Umwälzpumpe-Slider: kein automatischer Reset – Slider bleibt manuell verstellbar
+          // Sync erfolgt nur bei Kompressor-Start (cool_action) und -Stop (idle_action)
+
+binary_sensor:
+  # Motor läuft (Schwenken oder Drehen) – Template wird jeden Zyklus ausgewertet
+  # on_press: Thermostat auf Cooling-Preset (-1°C) → Kompressor bleibt an während Rotation
+  - platform: template
+    id: bin_motor_laeuft
+    name: "Motor läuft"
+    lambda: "return id(sw_aktiv) || id(dr_aktiv);"
+    on_press:
+      - lambda: |-
+          id(ice_run_allowed) = true;
+          if (id(eisbank_laeuft)) {
+            id(eisbank_laeuft) = false;
+            id(eisbank_start_ms) = 0;
+            lv_label_set_text(id(lbl_eisbank_status), "");
+            lv_obj_set_style_bg_color(id(obj_eisbank_badge), lv_color_hex(0x888888), 0);
+            ESP_LOGI("eisbank", "Motor gestartet – ICE gestoppt, ice_run_allowed gesetzt");
+          } else {
+            ESP_LOGI("eisbank", "Motor gestartet – ice_run_allowed gesetzt");
+          }
+
+script:
+  # Verzögerter Kompressor-Start: wartet bis 120s ab Boot verstrichen, dann startet nur
+  # wenn kein AUS-Befehl zwischenzeitlich kam (kompressor_soll_ein = false)
+  - id: script_kompressor_delayed_start
+    mode: single
+    then:
+      - delay: !lambda "return (millis() < 120000) ? (120000 - (uint32_t)millis()) : 0;"
+      - lambda: |-
+          if (id(kompressor_soll_ein)) {
+            id(output_kompressor_relais).turn_on();
+            ESP_LOGI("kompressor", "Verzögerter Start – Schutzzeit abgelaufen");
+          } else {
+            ESP_LOGI("kompressor", "Verzögerter Start abgebrochen (AUS kam zuerst)");
+          }
+
+interval:
+  # ── thermostat_steuerung: alle 500 ms ────────────────────────────────────────
+  # Zentrale, verriegelte Thermostat-Steuerung.
+  # Zustand: 0=Boot, 1=Normal, 2=Turbo (Motor oder ICE), 4=Warten_auf_Restore
+  # Nur bei echtem Zustandswechsel wird make_call() ausgeführt.
+  - interval: 500ms
+    then:
+      - lambda: |-
+          static int    ts_state        = 0;   // 0=Boot 1=Normal 2=Turbo 4=Restore-Countdown
+          static uint32_t ts_restore_ms = 0;
+          static int    ts_applied_x10  = -1;
+          const uint32_t RESTORE_DELAY  = (uint32_t)(${c_thermostat_restore_time}) * 1000u;
+
+          // ── Eisbank: Start/Stop ──────────────────────────────────────────────
+          bool ice_feature = id(icebank_enabled) && (id(eisbank_dauer_min) > 0);
+          if (id(eisbank_laeuft)) {
+            bool stop = !ice_feature;
+            bool timer_stop = false;
+            if (!stop) {
+              if (millis() - id(eisbank_start_ms) >= (uint32_t)id(eisbank_dauer_min) * 60000u) {
+                ESP_LOGI("eisbank", "Timer %d min abgelaufen", id(eisbank_dauer_min));
+                stop = true;
+                timer_stop = true;
+              } else {
+                float temp_eb = id(sensor_temp_becken).state;
+                if (!isnan(temp_eb)) {
+                  float wiederanlauf = id(thermostat_ziel_x10) / 10.0f + ${c_thermostat_deadband}f;
+                  if (temp_eb > wiederanlauf) {
+                    ESP_LOGI("eisbank", "Abbruch: %.2f\xc2\xb0C > %.2f\xc2\xb0C", temp_eb, wiederanlauf);
+                    stop = true;
+                  }
+                }
+              }
+            }
+            if (stop) {
+              id(eisbank_laeuft) = false;
+              id(eisbank_start_ms) = 0;
+              lv_label_set_text(id(lbl_eisbank_status), "");
+              lv_obj_set_style_bg_color(id(obj_eisbank_badge), lv_color_hex(0x888888), 0);
+              if (timer_stop) {
+                id(ice_run_allowed) = false;  // Neustart sperren bis Bedingung erfüllt
+                ESP_LOGI("eisbank", "Gestoppt (Timer) – ice_run_allowed=false");
+              } else {
+                ESP_LOGI("eisbank", "Gestoppt (Temp)");
+              }
+            }
+          } else if (ice_feature && id(ice_run_allowed) && !id(bin_motor_laeuft).state) {
+            float temp = id(sensor_temp_becken).state;
+            float target = id(thermostat_ziel_x10) / 10.0f;
+            float ice_start_thresh = target - 0.1f;  // frühestens 0.1°C unter Ziel
+            if (!isnan(temp) && temp <= ice_start_thresh) {
+              id(eisbank_laeuft) = true;
+              id(eisbank_start_ms) = millis();
+              lv_label_set_text(id(lbl_eisbank_status), "AKTIV");
+              lv_obj_set_style_text_color(id(lbl_eisbank_status), lv_color_hex(0x0055FF), 0);
+              lv_obj_set_style_bg_color(id(obj_eisbank_badge), lv_color_hex(0x0055FF), 0);
+              ESP_LOGI("eisbank", "Gestartet – %d min, %.2f\xc2\xb0C <= %.2f\xc2\xb0C (thresh)",
+                       id(eisbank_dauer_min), temp, ice_start_thresh);
+            }
+          } else if (!id(ice_run_allowed)) {
+            // Freigabe prüfen: Temp über Soll → ice_run_allowed wieder setzen
+            float temp = id(sensor_temp_becken).state;
+            float target = id(thermostat_ziel_x10) / 10.0f;
+            if (!isnan(temp) && temp > target) {
+              id(ice_run_allowed) = true;
+              ESP_LOGI("eisbank", "Freigabe: %.2f\xc2\xb0C > %.2f\xc2\xb0C", temp, target);
+            }
+          }
+
+          // ── Thermostat-Zustandsmaschine ──────────────────────────────────────
+          bool motor_an = id(bin_motor_laeuft).state;
+          bool ice_an   = id(eisbank_laeuft);
+          bool turbo    = motor_an || ice_an;
+
+          int neuer_state = ts_state;
+
+          if (ts_state == 0) {
+            neuer_state = turbo ? 2 : 1;
+          } else if (turbo) {
+            if (ts_state == 4) ts_restore_ms = 0;
+            neuer_state = 2;
+          } else if (ts_state == 2) {
+            neuer_state = 4;
+            ts_restore_ms = millis();
+          } else if (ts_state == 4) {
+            if (millis() - ts_restore_ms >= RESTORE_DELAY)
+              neuer_state = 1;
+          }
+
+          int ziel_x10 = id(thermostat_ziel_x10);
+          if (ziel_x10 < 1 || ziel_x10 > 50) ziel_x10 = 8;
+
+          bool muss_setzen = (neuer_state != ts_state);
+          if (!muss_setzen && neuer_state == 1 && ziel_x10 != ts_applied_x10)
+            muss_setzen = true;
+
+          if (!muss_setzen) return;
+
+          ts_state = neuer_state;
+
+          if (neuer_state == 2) {
+            auto call = id(climate_thermostat).make_call();
+            call.set_target_temperature(-1.0f);
+            call.perform();
+            ts_applied_x10 = -10;
+            ESP_LOGI("ts", "TURBO: -1.0\xc2\xb0C (motor=%d ice=%d)", (int)motor_an, (int)ice_an);
+          } else if (neuer_state == 1) {
+            float t = ziel_x10 / 10.0f;
+            auto call = id(climate_thermostat).make_call();
+            call.set_target_temperature(t);
+            call.perform();
+            ts_applied_x10 = ziel_x10;
+            lv_slider_set_value(id(slider_temp), ziel_x10, LV_ANIM_OFF);
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%.1f\xc2\xb0", t);
+            lv_label_set_text(id(lbl_temp_wert), buf);
+            ESP_LOGI("ts", "NORMAL: %.1f\xc2\xb0C", t);
+          }
+          // State 4: Countdown läuft, Thermostat bleibt auf -1°C
+
+  # ── umwaelzpumpe_steuerung: alle 500 ms ──────────────────────────────────────
+  # Zustände: -1=unbekannt, 0=Aus, 1=Kühlung, 2=ICE-Puls
+  # ICE-Puls: ON für c_icebank_pump_ed% eines c_icebank_pump_interval_length-s-Zyklus
+  - interval: 500ms
+    then:
+      - lambda: |-
+          static int      pumpe_state   = -1;
+          static uint32_t pump_phase_ms = 0;
+          static bool     pump_ice_on   = false;
+
+          bool ice_an   = id(eisbank_laeuft);
+          bool kuehlend = (id(climate_thermostat).action == CLIMATE_ACTION_COOLING);
+
+          int neuer_state;
+          if (ice_an)        neuer_state = 2;
+          else if (kuehlend) neuer_state = 1;
+          else               neuer_state = 0;
+
+          if (neuer_state != pumpe_state) {
+            pumpe_state   = neuer_state;
+            pump_phase_ms = 0;
+            pump_ice_on   = false;
+            if (neuer_state == 0) {
+              id(output_pumpe_dacB).turn_off();
+              lv_slider_set_value(id(slider_umwaelzpumpe), 0, LV_ANIM_OFF);
+              ESP_LOGI("pumpe", "AUS");
+            } else if (neuer_state == 1) {
+              id(output_pumpe_dacB).set_level(${c_pumpe_umwaelzung_ein_perc} / 100.0f);
+              lv_slider_set_value(id(slider_umwaelzpumpe), ${c_pumpe_umwaelzung_ein_perc}, LV_ANIM_OFF);
+              ESP_LOGI("pumpe", "EIN (%d%%)", ${c_pumpe_umwaelzung_ein_perc});
+            } else {
+              ESP_LOGI("pumpe", "ICE-Puls-Modus");
+            }
+          }
+
+          // ICE-Puls-Timing
+          if (pumpe_state == 2) {
+            const uint32_t ON_ms    = (uint32_t)(${c_icebank_pump_interval_length} * 1000.0f * ${c_icebank_pump_ed} / 100.0f);
+            const uint32_t CYCLE_ms = (uint32_t)(${c_icebank_pump_interval_length} * 1000.0f);
+            uint32_t elapsed = (pump_phase_ms == 0) ? CYCLE_ms : (millis() - pump_phase_ms);
+            if (elapsed >= CYCLE_ms) {
+              pump_phase_ms = millis();
+              if (!pump_ice_on) {
+                pump_ice_on = true;
+                id(output_pumpe_dacB).set_level(${c_icebank_pump_power} / 100.0f);
+                lv_slider_set_value(id(slider_umwaelzpumpe), ${c_icebank_pump_power}, LV_ANIM_OFF);
+              }
+            } else if (elapsed >= ON_ms && pump_ice_on) {
+              pump_ice_on = false;
+              id(output_pumpe_dacB).turn_off();
+              lv_slider_set_value(id(slider_umwaelzpumpe), 0, LV_ANIM_OFF);
+            }
+          }
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      id: sensor_wifi_ip
+      name: "WiFi IP"
+      internal: true
+      on_value:
+        - lambda: |-
+            lv_label_set_text_fmt(id(lbl_info_wifi), "WiFi IP:  %s", x.c_str());

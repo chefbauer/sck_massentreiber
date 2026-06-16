@@ -1,0 +1,49 @@
+# ================================
+# BLE – BTHome v2 Empfang via bthome_receiver
+#
+# !! NICHT VERWENDET !!
+# sensor_temp_becken wird per I²C-Bridge (ESP32-C3, Adresse 0x48) gelesen,
+# definiert in hardware.yaml (platform: template, update_interval: 1s).
+# Diese Datei ist inaktiv und wird NICHT als Package eingebunden.
+#
+# esp32_hosted (ESP32-C6 via SDIO) ist extern definiert.
+# Externe Komponente: github://dz0ny/esphome-bthome
+# ble_stack: bluedroid (Standard) – passend für P4+C6.
+# ================================
+# ── Komponenten ──────────────────────────────────────────────────────────────────
+#  esp32_ble_tracker:  scan_parameters
+#  bthome_receiver:    (kein id)
+#  sensor:             sensor_temp_becken
+# ─────────────────────────────────────────────────────────────────────────────────
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/dz0ny/esphome-bthome
+      ref: main
+    components: [bthome_receiver]
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: false
+
+bthome_receiver:
+  ble_stack: bluedroid
+  devices:
+    - mac_address: "dc:da:0c:a1:89:8e"
+      name: "DS18B20 BLE-Bridge"
+
+# ── Temperatursensor ──────────────────────────────────────────────────────────
+
+sensor:
+  - platform: bthome_receiver
+    mac_address: "dc:da:0c:a1:89:8e"
+    temperature:
+      id: sensor_temp_becken
+      name: "Temperatur Becken"
+      accuracy_decimals: 1
+      filters:
+        - throttle: 3s
+      on_value:
+        - lvgl.widget.refresh: lbl_temp_becken
+        - script.execute: script_kuehl_update

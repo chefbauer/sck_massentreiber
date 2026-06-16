@@ -1,0 +1,44 @@
+# ── Komponenten ──────────────────────────────────────────────────────────────────
+#  lvgl / top_layer:
+#    overlay_amg8833:
+#      amg_grid_container, btn_amg_exit, btn_amg_mode, lbl_amg_mode
+#    overlay_schwenker_settings:
+#      tabview_schwenker
+#      tab_schwenken:
+#        btn_schwenker_overlay_toggle, lbl_overlay_schwenker_icon
+#        arc_area_zeit → arc_schwenkzeit, lbl_arc_zeit_val
+#        arc_area_acc  → arc_acc, lbl_arc_acc_val, lbl_trapez_shape
+#        arc_area_rpm  → arc_rpm, lbl_arc_rpm_val
+#        row_presets   → btn_preset[1..5], lbl_preset[1..5]_name/vals
+#      tab_drehen:
+#        btn_dr_start_stop
+#        arc_dr_area_rpm → arc_dr_rpm, lbl_dr_rpm_val
+#        arc_dr_area_acc → arc_dr_acc, lbl_dr_acc_val
+#        arc_dr_controls → btn_dr_richtung/lbl_dr_richtung, btn_dr_mode/lbl_dr_mode
+#        row_dr_presets  → btn_drp[1..5], lbl_drp[1..5]_name/vals
+#      btn_schwenker_settings_exit (overlay-level, über TabView)
+#    overlay_sensorphalanx:
+#      btn_sensorphalanx_exit,
+#      row_sp_tof/temp/humi/pressure/altitude/light/mlx + je badge + value_label
+#    overlay_timer_cowntdown:
+#      btn_tc_exit, lbl_tc_title,
+#      obj_tc_slot_row → btn_tc_s1..s6, btn_tc_all
+#      obj_tc_type_row → btn_tc_type_timer, btn_tc_type_cd
+#      obj_tc_timer_content → btn_tc_reset
+#      obj_tc_cd_content → slider_tc_minutes, lbl_tc_minutes_val,
+#                           btn_tc_dose, btn_tc_flasche
+#      btn_tc_ok
+#    overlay_cooling:
+#      btn_cooling_exit, chart_cooling,
+#      series_temp_val, series_komp_val
+# ─────────────────────────────────────────────────────────────────────────────────
+
+lvgl:
+  top_layer:
+    widgets:
+      - !include lvgl_overlays/amg8833.yaml
+      - !include lvgl_overlays/schwenker.yaml
+      - !include lvgl_overlays/sensorphalanx.yaml
+      - !include lvgl_overlays/temp_messung.yaml
+      - !include lvgl_overlays/cooling.yaml
+      - !include lvgl_overlays/cd_mini.yaml

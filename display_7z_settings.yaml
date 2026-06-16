@@ -1,0 +1,9 @@
+# ── Komponenten ──────────────────────────────────────────────────────────────────
+#  (keine aktiven Komponenten – alle Substitutions wurden nach schwippschwenker.yaml migriert)
+# ─────────────────────────────────────────────────────────────────────────────────
+#
+# HINWEIS: Diese Datei ist nur noch als Archiv erhalten.
+# Alle Substitutions (Pins, CAN-IDs, Sensor-Intervalle, Standby-Werte)
+# sind jetzt in schwippschwenker.yaml zentralisiert.
+#
+# Im Hauptprojekt nicht mehr als Package einbinden.

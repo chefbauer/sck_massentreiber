@@ -1,0 +1,1208 @@
+obj:
+  id: overlay_schwenker_settings
+  width: 100%
+  height: 100%
+  bg_color: 0xFFFFFF
+  bg_opa: 97%
+  hidden: true
+  clickable: true
+  pad_all: 0
+  scrollable: false
+  widgets:
+    # ── TabView: Schwenken / Drehen ────────────────────────
+    - tabview:
+        id: tabview_schwenker
+        width: 1024
+        height: 600
+        align: TOP_LEFT
+        x: 0
+        y: 0
+        scrollable: false
+        scrollbar_mode: "off"
+        tab_style:
+          bg_color: 0xE8EEF8
+          text_font: font_tab
+          text_color: 0x003366
+        on_value:
+          - lambda: |-
+              if (lv_tabview_get_tab_act(id(tabview_schwenker)) == 1) {
+                id(dr_modus) = true;
+                lv_label_set_text(id(lbl_motor_icon), "\xef\x8b\xb9");  // rotate-right (Drehen)
+                id(script_drehen_settings_open).execute();
+              } else {
+                id(dr_modus) = false;
+                lv_label_set_text(id(lbl_motor_icon), "\xef\x80\xa1");  // arrows-rotate (Schwenken)
+              }
+        tabs:
+          # ══════════════════════════════════════════════════
+          # Tab 1: Schwenken (unverändert)
+          # ══════════════════════════════════════════════════
+          - name: "Schwenken"
+            id: tab_schwenken
+            scrollable: false
+            widgets:
+              # ── Start/Stop Button ──────────────────────────────────────────
+              - button:
+                  id: btn_schwenker_overlay_toggle
+                  width: 80
+                  height: 55
+                  align: TOP_LEFT
+                  x: 10
+                  y: 10
+                  radius: 10
+                  bg_color: 0x666666
+                  styles: style_action_btn
+                  on_press:
+                    - lambda: |-
+                        if (id(sw_aktiv)) {
+                          id(script_schwenker_stop).execute();
+                        } else {
+                          id(script_schwenker_start).execute();
+                        }
+                  widgets:
+                    - label:
+                        id: lbl_overlay_schwenker_icon
+                        align: CENTER
+                        text: "\uF021"
+                        text_font: font_icons
+                        text_color: 0xFFFFFF
+
+              # ── Arc 1: Schwenkzeit ─────────────────────────────────────────
+              - obj:
+                  id: arc_area_zeit
+                  width: 320
+                  height: 340
+                  align: TOP_LEFT
+                  x: 20
+                  y: 80
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - label:
+                        text: "Schwenkzeit"
+                        align: TOP_MID
+                        y: 0
+                        text_font: font_normal
+                        text_color: 0x334455
+                    - arc:
+                        id: arc_schwenkzeit
+                        width: 280
+                        height: 280
+                        align: TOP_MID
+                        y: 35
+                        min_value: 10      # = 1.0 s
+                        max_value: 200     # = 20.0 s
+                        value: 32          # = 3.2 s (default)
+                        adjustable: true
+                        arc_color: 0x2299FF
+                        arc_width: 15
+                        indicator:
+                          arc_color: 0x55EEFF
+                          arc_width: 15
+                        knob:
+                          bg_color: 0x55EEFF
+                          width: 22
+                          height: 22
+                          radius: 11
+                        on_value:
+                          - lambda: |-
+                              id(sw_halbperiode_ms) = (uint32_t)(x * 100);
+                              char buf[8];
+                              snprintf(buf, sizeof(buf), "%.1fs", x / 10.0f);
+                              lv_label_set_text(id(lbl_arc_zeit_val), buf);
+                    - label:
+                        id: lbl_arc_zeit_val
+                        text: "3.2s"
+                        align: TOP_MID
+                        y: 140
+                        text_font: font_arc_val
+                        text_color: 0x0077CC
+                        text_align: CENTER
+
+              # ── Arc 2: Beschleunigung (Trapez-Rampe %) ────────────────────
+              - obj:
+                  id: arc_area_acc
+                  width: 320
+                  height: 340
+                  align: TOP_MID
+                  x: 0
+                  y: 80
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - label:
+                        text: "Beschleunigung"
+                        align: TOP_MID
+                        y: 0
+                        text_font: font_normal
+                        text_color: 0x334455
+                    - arc:
+                        id: arc_acc
+                        width: 260
+                        height: 260
+                        align: TOP_MID
+                        y: 40
+                        min_value: 5
+                        max_value: 100
+                        value: 50
+                        adjustable: true
+                        arc_color: 0x885500
+                        arc_width: 15
+                        indicator:
+                          arc_color: 0xFF9933
+                          arc_width: 15
+                        knob:
+                          bg_color: 0xFF9933
+                          width: 22
+                          height: 22
+                          radius: 11
+                        on_value:
+                          - lambda: |-
+                              // Snap auf 5%-Schritte; 100%=acc_byte 254, nie 0/255 (= Ruck!)
+                              int val = ((int)x / 5) * 5;
+                              if (val < 5) val = 5;
+                              id(sw_acc) = val;
+                              // Nur snap-zurücksetzen wenn tatsächlich geründet (verhindert Rekursion)
+                              if (val != (int)x) lv_arc_set_value(id(arc_acc), val);
+                              char buf[6];
+                              snprintf(buf, sizeof(buf), "%d%%", val);
+                              lv_label_set_text(id(lbl_arc_acc_val), buf);
+                    - label:
+                        id: lbl_arc_acc_val
+                        text: "50%"
+                        align: TOP_MID
+                        y: 148
+                        text_font: font_arc_val
+                        text_color: 0xCC7700
+                        text_align: CENTER
+                    - label:
+                        id: lbl_trapez_shape
+                        text: ""          # [VERALTET] war Sinus-Trapez-Visualisierung
+                        hidden: true
+                        align: TOP_MID
+                        y: 210
+                        text_font: font_normal
+                        text_color: 0xFF9933
+                        text_align: CENTER
+
+              # ── Arc 3: Max RPM ─────────────────────────────────────────────
+              - obj:
+                  id: arc_area_rpm
+                  width: 320
+                  height: 340
+                  align: TOP_RIGHT
+                  x: -20
+                  y: 80
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - label:
+                        text: "Max Umdrehungen"
+                        align: TOP_MID
+                        y: 0
+                        text_font: font_normal
+                        text_color: 0x334455
+                    - arc:
+                        id: arc_rpm
+                        width: 280
+                        height: 280
+                        align: TOP_MID
+                        y: 35
+                        min_value: 1
+                        max_value: 100
+                        value: 15
+                        adjustable: true
+                        arc_color: 0x226622
+                        arc_width: 15
+                        indicator:
+                          arc_color: 0x44FF88
+                          arc_width: 15
+                        knob:
+                          bg_color: 0x44FF88
+                          width: 22
+                          height: 22
+                          radius: 11
+                        on_value:
+                          - lambda: |-
+                              id(sw_max_speed_rpm) = (int)x;
+                              char buf[6];
+                              snprintf(buf, sizeof(buf), "%d", (int)x);
+                              lv_label_set_text(id(lbl_arc_rpm_val), buf);
+                    - label:
+                        id: lbl_arc_rpm_val
+                        text: "4"
+                        align: TOP_MID
+                        y: 140
+                        text_font: font_arc_val
+                        text_color: 0x226644
+                        text_align: CENTER
+                    - label:
+                        text: "Upm"
+                        align: TOP_MID
+                        y: 198
+                        text_font: font_small
+                        text_color: 0x556677
+
+              # ── Preset-Buttons Schwenken (Short: laden, Long: speichern) ──
+              - obj:
+                  id: row_presets
+                  width: 960
+                  height: 90
+                  align: BOTTOM_MID
+                  y: -10
+                  styles: style_transp_container
+                  scrollable: false
+                  widgets:
+                    # P1
+                    - button:
+                        id: btn_preset1
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 11
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_preset1_name
+                              text: "①"
+                              align: TOP_LEFT
+                              x: 12
+                              y: 8
+                              text_font: font_preset_num
+                              text_color: 0xFFFFFF
+                          - label:
+                              id: lbl_preset1_vals
+                              text: "3.2s · 4 Upm · 100%"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(sw_halbperiode_ms) = id(preset1_hp_ms);
+                              id(sw_max_speed_rpm)  = id(preset1_rpm);
+                              id(sw_acc)            = id(preset1_acc);
+                              lv_arc_set_value(id(arc_schwenkzeit), (int)(id(preset1_hp_ms)/100));
+                              lv_arc_set_value(id(arc_rpm), id(preset1_rpm));
+                              lv_arc_set_value(id(arc_acc), id(preset1_acc));
+                              char b1[8]; snprintf(b1,sizeof(b1),"%.1fs",id(preset1_hp_ms)/1000.0f);
+                              lv_label_set_text(id(lbl_arc_zeit_val), b1);
+                              char b2[6]; snprintf(b2,sizeof(b2),"%d",id(preset1_rpm));
+                              lv_label_set_text(id(lbl_arc_rpm_val), b2);
+                              char b3[6]; snprintf(b3,sizeof(b3),"%d%%",id(preset1_acc));
+                              lv_label_set_text(id(lbl_arc_acc_val), b3);
+                              ESP_LOGI("preset","P1 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(preset1_hp_ms) = id(sw_halbperiode_ms);
+                              id(preset1_rpm)   = id(sw_max_speed_rpm);
+                              id(preset1_acc)   = id(sw_acc);
+                              char buf[28];
+                              snprintf(buf,sizeof(buf),"%.1fs \xc2\xb7 %d Upm \xc2\xb7 %d%%",
+                                       id(preset1_hp_ms)/1000.0f,id(preset1_rpm),id(preset1_acc));
+                              lv_label_set_text(id(lbl_preset1_vals), buf);
+                              ESP_LOGI("preset","P1 gespeichert");
+                    # P2
+                    - button:
+                        id: btn_preset2
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 201
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_preset2_name
+                              text: "②"
+                              align: TOP_LEFT
+                              x: 12
+                              y: 8
+                              text_font: font_preset_num
+                              text_color: 0xFFFFFF
+                          - label:
+                              id: lbl_preset2_vals
+                              text: "2.0s · 8 Upm · 100%"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(sw_halbperiode_ms) = id(preset2_hp_ms);
+                              id(sw_max_speed_rpm)  = id(preset2_rpm);
+                              id(sw_acc)            = id(preset2_acc);
+                              lv_arc_set_value(id(arc_schwenkzeit), (int)(id(preset2_hp_ms)/100));
+                              lv_arc_set_value(id(arc_rpm), id(preset2_rpm));
+                              lv_arc_set_value(id(arc_acc), id(preset2_acc));
+                              char b1[8]; snprintf(b1,sizeof(b1),"%.1fs",id(preset2_hp_ms)/1000.0f);
+                              lv_label_set_text(id(lbl_arc_zeit_val), b1);
+                              char b2[6]; snprintf(b2,sizeof(b2),"%d",id(preset2_rpm));
+                              lv_label_set_text(id(lbl_arc_rpm_val), b2);
+                              char b3[6]; snprintf(b3,sizeof(b3),"%d%%",id(preset2_acc));
+                              lv_label_set_text(id(lbl_arc_acc_val), b3);
+                              ESP_LOGI("preset","P2 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(preset2_hp_ms) = id(sw_halbperiode_ms);
+                              id(preset2_rpm)   = id(sw_max_speed_rpm);
+                              id(preset2_acc)   = id(sw_acc);
+                              char buf[28];
+                              snprintf(buf,sizeof(buf),"%.1fs \xc2\xb7 %d Upm \xc2\xb7 %d%%",
+                                       id(preset2_hp_ms)/1000.0f,id(preset2_rpm),id(preset2_acc));
+                              lv_label_set_text(id(lbl_preset2_vals), buf);
+                              ESP_LOGI("preset","P2 gespeichert");
+                    # P3
+                    - button:
+                        id: btn_preset3
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 391
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_preset3_name
+                              text: "③"
+                              align: TOP_LEFT
+                              x: 12
+                              y: 8
+                              text_font: font_preset_num
+                              text_color: 0xFFFFFF
+                          - label:
+                              id: lbl_preset3_vals
+                              text: "5.0s · 12 Upm · 100%"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(sw_halbperiode_ms) = id(preset3_hp_ms);
+                              id(sw_max_speed_rpm)  = id(preset3_rpm);
+                              id(sw_acc)            = id(preset3_acc);
+                              lv_arc_set_value(id(arc_schwenkzeit), (int)(id(preset3_hp_ms)/100));
+                              lv_arc_set_value(id(arc_rpm), id(preset3_rpm));
+                              lv_arc_set_value(id(arc_acc), id(preset3_acc));
+                              char b1[8]; snprintf(b1,sizeof(b1),"%.1fs",id(preset3_hp_ms)/1000.0f);
+                              lv_label_set_text(id(lbl_arc_zeit_val), b1);
+                              char b2[6]; snprintf(b2,sizeof(b2),"%d",id(preset3_rpm));
+                              lv_label_set_text(id(lbl_arc_rpm_val), b2);
+                              char b3[6]; snprintf(b3,sizeof(b3),"%d%%",id(preset3_acc));
+                              lv_label_set_text(id(lbl_arc_acc_val), b3);
+                              ESP_LOGI("preset","P3 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(preset3_hp_ms) = id(sw_halbperiode_ms);
+                              id(preset3_rpm)   = id(sw_max_speed_rpm);
+                              id(preset3_acc)   = id(sw_acc);
+                              char buf[28];
+                              snprintf(buf,sizeof(buf),"%.1fs \xc2\xb7 %d Upm \xc2\xb7 %d%%",
+                                       id(preset3_hp_ms)/1000.0f,id(preset3_rpm),id(preset3_acc));
+                              lv_label_set_text(id(lbl_preset3_vals), buf);
+                              ESP_LOGI("preset","P3 gespeichert");
+                    # P4
+                    - button:
+                        id: btn_preset4
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 581
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_preset4_name
+                              text: "④"
+                              align: TOP_LEFT
+                              x: 12
+                              y: 8
+                              text_font: font_preset_num
+                              text_color: 0xFFFFFF
+                          - label:
+                              id: lbl_preset4_vals
+                              text: "3.0s · 6 Upm · 75%"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(sw_halbperiode_ms) = id(preset4_hp_ms);
+                              id(sw_max_speed_rpm)  = id(preset4_rpm);
+                              id(sw_acc)            = id(preset4_acc);
+                              lv_arc_set_value(id(arc_schwenkzeit), (int)(id(preset4_hp_ms)/100));
+                              lv_arc_set_value(id(arc_rpm), id(preset4_rpm));
+                              lv_arc_set_value(id(arc_acc), id(preset4_acc));
+                              char b1[8]; snprintf(b1,sizeof(b1),"%.1fs",id(preset4_hp_ms)/1000.0f);
+                              lv_label_set_text(id(lbl_arc_zeit_val), b1);
+                              char b2[6]; snprintf(b2,sizeof(b2),"%d",id(preset4_rpm));
+                              lv_label_set_text(id(lbl_arc_rpm_val), b2);
+                              char b3[6]; snprintf(b3,sizeof(b3),"%d%%",id(preset4_acc));
+                              lv_label_set_text(id(lbl_arc_acc_val), b3);
+                              ESP_LOGI("preset","P4 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(preset4_hp_ms) = id(sw_halbperiode_ms);
+                              id(preset4_rpm)   = id(sw_max_speed_rpm);
+                              id(preset4_acc)   = id(sw_acc);
+                              char buf[28];
+                              snprintf(buf,sizeof(buf),"%.1fs \xc2\xb7 %d Upm \xc2\xb7 %d%%",
+                                       id(preset4_hp_ms)/1000.0f,id(preset4_rpm),id(preset4_acc));
+                              lv_label_set_text(id(lbl_preset4_vals), buf);
+                              ESP_LOGI("preset","P4 gespeichert");
+                    # P5
+                    - button:
+                        id: btn_preset5
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 771
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_preset5_name
+                              text: "⑤"
+                              align: TOP_LEFT
+                              x: 12
+                              y: 8
+                              text_font: font_preset_num
+                              text_color: 0xFFFFFF
+                          - label:
+                              id: lbl_preset5_vals
+                              text: "5.0s · 20 Upm · 50%"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(sw_halbperiode_ms) = id(preset5_hp_ms);
+                              id(sw_max_speed_rpm)  = id(preset5_rpm);
+                              id(sw_acc)            = id(preset5_acc);
+                              lv_arc_set_value(id(arc_schwenkzeit), (int)(id(preset5_hp_ms)/100));
+                              lv_arc_set_value(id(arc_rpm), id(preset5_rpm));
+                              lv_arc_set_value(id(arc_acc), id(preset5_acc));
+                              char b1[8]; snprintf(b1,sizeof(b1),"%.1fs",id(preset5_hp_ms)/1000.0f);
+                              lv_label_set_text(id(lbl_arc_zeit_val), b1);
+                              char b2[6]; snprintf(b2,sizeof(b2),"%d",id(preset5_rpm));
+                              lv_label_set_text(id(lbl_arc_rpm_val), b2);
+                              char b3[6]; snprintf(b3,sizeof(b3),"%d%%",id(preset5_acc));
+                              lv_label_set_text(id(lbl_arc_acc_val), b3);
+                              ESP_LOGI("preset","P5 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(preset5_hp_ms) = id(sw_halbperiode_ms);
+                              id(preset5_rpm)   = id(sw_max_speed_rpm);
+                              id(preset5_acc)   = id(sw_acc);
+                              char buf[28];
+                              snprintf(buf,sizeof(buf),"%.1fs \xc2\xb7 %d Upm \xc2\xb7 %d%%",
+                                       id(preset5_hp_ms)/1000.0f,id(preset5_rpm),id(preset5_acc));
+                              lv_label_set_text(id(lbl_preset5_vals), buf);
+                              ESP_LOGI("preset","P5 gespeichert");
+
+          # ══════════════════════════════════════════════════
+          # Tab 2: Drehen – reiner Motorbetrieb
+          # ══════════════════════════════════════════════════
+          - name: "Drehen"
+            id: tab_drehen
+            scrollable: false
+            widgets:
+              # ── Start/Stop Button ──────────────────────────────────────────
+              - button:
+                  id: btn_dr_start_stop
+                  width: 80
+                  height: 55
+                  align: TOP_LEFT
+                  x: 10
+                  y: 10
+                  radius: 10
+                  bg_color: 0x666666
+                  styles: style_action_btn
+                  on_press:
+                    - lambda: |-
+                        if (id(dr_aktiv)) {
+                          id(script_drehen_stop).execute();
+                        } else {
+                          id(script_drehen_start).execute();
+                        }
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "\uF021"
+                        text_font: font_icons
+                        text_color: 0xFFFFFF
+
+              # ── Pumpen-Auto-Button (EIN = 100% beim Drehen, AUS = manuell) ──
+              - button:
+                  id: btn_dr_pumpe_auto
+                  width: 180
+                  height: 55
+                  align: TOP_LEFT
+                  x: 100
+                  y: 10
+                  radius: 10
+                  bg_color: 0x1a5a8a
+                  styles: style_action_btn
+                  on_press:
+                    - lambda: |-
+                        id(dr_pumpe_auto) = !id(dr_pumpe_auto);
+                        if (id(dr_pumpe_auto)) {
+                          lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe 100%");
+                          lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x1a5a8a), 0);
+                          // Wenn Drehmodus gerade aktiv: Pumpe sofort auf 100%
+                          if (id(dr_aktiv) && id(pumpe_a_aktiv)) {
+                            if (id(pumpe_vor_drehen_level) < 0.0f) {
+                              id(pumpe_vor_drehen_level) = lv_slider_get_value(id(slider_turmpumpe)) / 100.0f;
+                            }
+                            id(output_pumpe_dacA).set_level(1.0f);
+                            ESP_LOGI("drehen", "Pumpen-Auto EIN: 100%%");
+                          }
+                        } else {
+                          lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe: manuell");
+                          lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x555555), 0);
+                          // Pumpe zurück auf gespeicherten Level falls Drehen läuft
+                          if (id(dr_aktiv) && id(pumpe_vor_drehen_level) >= 0.0f) {
+                            id(output_pumpe_dacA).set_level(id(pumpe_vor_drehen_level));
+                            lv_slider_set_value(id(slider_turmpumpe),
+                              (int)(id(pumpe_vor_drehen_level)*100.0f+0.5f), LV_ANIM_OFF);
+                            id(pumpe_vor_drehen_level) = -1.0f;
+                            ESP_LOGI("drehen", "Pumpen-Auto AUS: zurück auf manuell");
+                          }
+                        }
+                  widgets:
+                    - label:
+                        id: lbl_dr_pumpe_auto
+                        align: CENTER
+                        text: "Pumpe 100%"
+                        text_font: font_small
+                        text_color: 0xFFFFFF
+
+              # ── Arc: Geschwindigkeit 5–400 UPM (links) ────────────────────
+              - obj:
+                  id: arc_dr_area_rpm
+                  width: 300
+                  height: 315
+                  align: TOP_LEFT
+                  x: 20
+                  y: 80
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - label:
+                        text: "Geschwindigkeit"
+                        align: TOP_MID
+                        y: 0
+                        text_font: font_normal
+                        text_color: 0x334455
+                    - arc:
+                        id: arc_dr_rpm
+                        width: 260
+                        height: 260
+                        align: TOP_MID
+                        y: 35
+                        min_value: 1
+                        max_value: 150
+                        value: 30
+                        adjustable: true
+                        arc_color: 0x226622
+                        arc_width: 15
+                        indicator:
+                          arc_color: 0x44FF88
+                          arc_width: 15
+                        knob:
+                          bg_color: 0x44FF88
+                          width: 22
+                          height: 22
+                          radius: 11
+                        on_value:
+                          - lambda: |-
+                              id(dr_speed_rpm) = (int)x;
+                              char buf[8];
+                              snprintf(buf, sizeof(buf), "%d", (int)x);
+                              lv_label_set_text(id(lbl_dr_rpm_val), buf);
+                              // Rampzeit neu berechnen und anzeigen
+                              float rt = (float)((int)x * 8) * (256 - id(dr_acc)) * 0.00005f;
+                              char rbuf[10]; snprintf(rbuf, sizeof(rbuf), "%.1fs", rt);
+                              lv_label_set_text(id(lbl_dr_ramp_info), rbuf);
+                              // Live-Update: sofort an Motor senden wenn Drehmodus aktiv
+                              if (id(dr_aktiv)) {
+                                int speed_val = (int)x * 8;
+                                uint8_t acc_b = (uint8_t)std::max(1, std::min(254, id(dr_acc)));
+                                int dr_dir    = (id(dr_richtung) > 0) ? 1 : 0;
+                                id(can_bus)->send_data(${motor_can_id}, false,
+                                    gen_data_can_motor_set_speed(${motor_can_id}, dr_dir, speed_val, acc_b));
+                                ESP_LOGI("drehen", "Live-UPM: %d (F6=%d)", (int)x, speed_val);
+                              }
+                    - label:
+                        id: lbl_dr_rpm_val
+                        text: "30"
+                        align: TOP_MID
+                        y: 138
+                        text_font: font_arc_val
+                        text_color: 0x226644
+                        text_align: CENTER
+                    - label:
+                        text: "Upm (max 150)"
+                        align: TOP_MID
+                        y: 196
+                        text_font: font_small
+                        text_color: 0x556677
+
+              # ── Arc: Anlauf-Schrittzeit 0.1–3.0 s (rechts) ────────────────────────
+              - obj:
+                  id: arc_dr_area_acc
+                  width: 300
+                  height: 315
+                  align: TOP_RIGHT
+                  x: -20
+                  y: 80
+                  styles: style_transp_container
+                  scrollable: false
+                  clickable: false
+                  widgets:
+                    - label:
+                        text: "Anlauf (Motor-acc)"
+                        align: TOP_MID
+                        y: 0
+                        text_font: font_normal
+                        text_color: 0x334455
+                    - arc:
+                        id: arc_dr_acc
+                        width: 260
+                        height: 260
+                        align: TOP_MID
+                        y: 35
+                        min_value: 1
+                        max_value: 254
+                        value: 80
+                        adjustable: true
+                        arc_color: 0x885500
+                        arc_width: 15
+                        indicator:
+                          arc_color: 0xFF9933
+                          arc_width: 15
+                        knob:
+                          bg_color: 0xFF9933
+                          width: 22
+                          height: 22
+                          radius: 11
+                        on_value:
+                          - lambda: |-
+                              id(dr_acc) = (int)x;
+                              // Rampzeit = speed_val × (256-acc) × 50µs
+                              float rt = (float)(id(dr_speed_rpm) * 8) * (256 - (int)x) * 0.00005f;
+                              char buf[10];
+                              snprintf(buf, sizeof(buf), "%d", (int)x);
+                              lv_label_set_text(id(lbl_dr_acc_val), buf);
+                              char rbuf[10]; snprintf(rbuf, sizeof(rbuf), "%.1fs", rt);
+                              lv_label_set_text(id(lbl_dr_ramp_info), rbuf);
+                              // Live-Update: sofort an Motor senden wenn Drehmodus aktiv
+                              if (id(dr_aktiv)) {
+                                int speed_val = id(dr_speed_rpm) * 8;
+                                uint8_t acc_b = (uint8_t)std::max(1, std::min(254, (int)x));
+                                int dr_dir    = (id(dr_richtung) > 0) ? 1 : 0;
+                                id(can_bus)->send_data(${motor_can_id}, false,
+                                    gen_data_can_motor_set_speed(${motor_can_id}, dr_dir, speed_val, acc_b));
+                                ESP_LOGI("drehen", "Live-Acc: %d ramp=%.1fs", (int)x, rt);
+                              }
+                    - label:
+                        id: lbl_dr_acc_val
+                        text: "80"
+                        align: TOP_MID
+                        y: 138
+                        text_font: font_arc_val
+                        text_color: 0xCC7700
+                        text_align: CENTER
+                    - label:
+                        text: "acc (1–254)"
+                        align: TOP_MID
+                        y: 196
+                        text_font: font_small
+                        text_color: 0x556677
+                    - label:
+                        id: lbl_dr_ramp_info
+                        text: "~2.1s"
+                        align: TOP_MID
+                        y: 220
+                        text_font: font_small
+                        text_color: 0xFFAA44
+                        text_align: CENTER
+
+              # ── Steuerknöpfe: Richtung + Betriebsart (mitte) ─────────────
+              - obj:
+                  id: arc_dr_controls
+                  width: 320
+                  height: 160
+                  align: TOP_MID
+                  x: 0
+                  y: 165
+                  styles: style_transp_container
+                  scrollable: false
+                  widgets:
+                    # Richtungsschalter
+                    - button:
+                        id: btn_dr_richtung
+                        width: 290
+                        height: 65
+                        align: TOP_MID
+                        x: 0
+                        y: 0
+                        bg_color: 0x1a6b4a
+                        border_width: 0
+                        radius: 12
+                        shadow_width: 0
+                        on_press:
+                          - lambda: |-
+                              id(dr_richtung) *= -1;
+                              if (id(dr_richtung) > 0) {
+                                lv_label_set_text(id(lbl_dr_richtung), "Rechts \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a6b4a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_richtung), "Links \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a4a6b), 0);
+                              }
+                        widgets:
+                          - label:
+                              id: lbl_dr_richtung
+                              text: "Rechts \xef\x81\x8b"
+                              align: CENTER
+                              text_font: font_normal
+                              text_color: 0xFFFFFF
+                    # Betriebsart-Schalter
+                    - button:
+                        id: btn_dr_mode
+                        width: 290
+                        height: 65
+                        align: TOP_MID
+                        x: 0
+                        y: 80
+                        bg_color: 0x553388
+                        border_width: 0
+                        radius: 12
+                        shadow_width: 0
+                        on_press:
+                          - lambda: |-
+                              id(dr_motor_mode) = (id(dr_motor_mode) == 4) ? 5 : 4;
+                              if (id(dr_motor_mode) == 4) {
+                                lv_label_set_text(id(lbl_dr_mode), "Closed Loop");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x553388), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_mode), "FOC");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x336688), 0);
+                              }
+                        widgets:
+                          - label:
+                              id: lbl_dr_mode
+                              text: "Closed Loop"
+                              align: CENTER
+                              text_font: font_normal
+                              text_color: 0xFFFFFF
+
+              # ── Preset-Buttons Drehen (Short: laden, Long: speichern) ──────
+              - obj:
+                  id: row_dr_presets
+                  width: 960
+                  height: 90
+                  align: BOTTOM_MID
+                  y: -10
+                  styles: style_transp_container
+                  scrollable: false
+                  widgets:
+                    # DP1
+                    - button:
+                        id: btn_drp1
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 11
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_drp1_name
+                              text: "${c_drp1_name}"
+                              align: TOP_MID
+                              y: 8
+                              text_font: font_small
+                              text_color: 0xDDEEFF
+                          - label:
+                              id: lbl_drp1_vals
+                              text: "R:20, A:50, P:ON"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(dr_speed_rpm)  = id(drp1_rpm);
+                              id(dr_acc)        = id(drp1_acc);
+                              id(dr_richtung)   = id(drp1_richtung);
+                              id(dr_motor_mode) = id(drp1_mode);
+                              id(dr_pumpe_auto) = id(drp1_pumpe);
+                              lv_arc_set_value(id(arc_dr_rpm), id(drp1_rpm));
+                              lv_arc_set_value(id(arc_dr_acc), id(drp1_acc));
+                              char b_rpm1[8]; snprintf(b_rpm1, sizeof(b_rpm1), "%d", id(drp1_rpm));
+                              lv_label_set_text(id(lbl_dr_rpm_val), b_rpm1);
+                              char b_acc1[8]; snprintf(b_acc1, sizeof(b_acc1), "%d", id(drp1_acc));
+                              lv_label_set_text(id(lbl_dr_acc_val), b_acc1);
+                              { float _rt = (float)(id(drp1_rpm) * 8) * (256 - id(drp1_acc)) * 0.00005f;
+                                char b_rt1[10]; snprintf(b_rt1, sizeof(b_rt1), "%.1fs", _rt);
+                                lv_label_set_text(id(lbl_dr_ramp_info), b_rt1); }
+                              if (id(drp1_richtung) > 0) {
+                                lv_label_set_text(id(lbl_dr_richtung), "Rechts \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a6b4a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_richtung), "Links \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a4a6b), 0);
+                              }
+                              if (id(drp1_mode) == 4) {
+                                lv_label_set_text(id(lbl_dr_mode), "Closed Loop");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x553388), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_mode), "FOC");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x336688), 0);
+                              }
+                              if (id(drp1_pumpe)) {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe 100%");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x1a5a8a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe: manuell");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x555555), 0);
+                              }
+                              ESP_LOGI("drpreset", "DP1 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(drp1_rpm)      = id(dr_speed_rpm);
+                              id(drp1_acc)      = id(dr_acc);
+                              id(drp1_richtung) = id(dr_richtung);
+                              id(drp1_mode)     = id(dr_motor_mode);
+                              id(drp1_pumpe)    = id(dr_pumpe_auto);
+                              char buf[28];
+                              snprintf(buf, sizeof(buf), "%s:%d, A:%d, P:%s",
+                                       id(drp1_richtung) > 0 ? "R" : "L",
+                                       id(drp1_rpm), id(drp1_acc),
+                                       id(drp1_pumpe) ? "ON" : "OFF");
+                              lv_label_set_text(id(lbl_drp1_vals), buf);
+                              ESP_LOGI("drpreset", "DP1 gespeichert");
+                    # DP2
+                    - button:
+                        id: btn_drp2
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 201
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_drp2_name
+                              text: "${c_drp2_name}"
+                              align: TOP_MID
+                              y: 8
+                              text_font: font_small
+                              text_color: 0xDDEEFF
+                          - label:
+                              id: lbl_drp2_vals
+                              text: "R:50, A:100, P:ON"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(dr_speed_rpm)  = id(drp2_rpm);
+                              id(dr_acc)        = id(drp2_acc);
+                              id(dr_richtung)   = id(drp2_richtung);
+                              id(dr_motor_mode) = id(drp2_mode);
+                              id(dr_pumpe_auto) = id(drp2_pumpe);
+                              lv_arc_set_value(id(arc_dr_rpm), id(drp2_rpm));
+                              lv_arc_set_value(id(arc_dr_acc), id(drp2_acc));
+                              char b_rpm2[8]; snprintf(b_rpm2, sizeof(b_rpm2), "%d", id(drp2_rpm));
+                              lv_label_set_text(id(lbl_dr_rpm_val), b_rpm2);
+                              char b_acc2[8]; snprintf(b_acc2, sizeof(b_acc2), "%d", id(drp2_acc));
+                              lv_label_set_text(id(lbl_dr_acc_val), b_acc2);
+                              { float _rt = (float)(id(drp2_rpm) * 8) * (256 - id(drp2_acc)) * 0.00005f;
+                                char b_rt2[10]; snprintf(b_rt2, sizeof(b_rt2), "%.1fs", _rt);
+                                lv_label_set_text(id(lbl_dr_ramp_info), b_rt2); }
+                              if (id(drp2_richtung) > 0) {
+                                lv_label_set_text(id(lbl_dr_richtung), "Rechts \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a6b4a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_richtung), "Links \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a4a6b), 0);
+                              }
+                              if (id(drp2_mode) == 4) {
+                                lv_label_set_text(id(lbl_dr_mode), "Closed Loop");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x553388), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_mode), "FOC");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x336688), 0);
+                              }
+                              if (id(drp2_pumpe)) {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe 100%");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x1a5a8a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe: manuell");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x555555), 0);
+                              }
+                              ESP_LOGI("drpreset", "DP2 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(drp2_rpm)      = id(dr_speed_rpm);
+                              id(drp2_acc)      = id(dr_acc);
+                              id(drp2_richtung) = id(dr_richtung);
+                              id(drp2_mode)     = id(dr_motor_mode);
+                              id(drp2_pumpe)    = id(dr_pumpe_auto);
+                              char buf[28];
+                              snprintf(buf, sizeof(buf), "%s:%d, A:%d, P:%s",
+                                       id(drp2_richtung) > 0 ? "R" : "L",
+                                       id(drp2_rpm), id(drp2_acc),
+                                       id(drp2_pumpe) ? "ON" : "OFF");
+                              lv_label_set_text(id(lbl_drp2_vals), buf);
+                              ESP_LOGI("drpreset", "DP2 gespeichert");
+                    # DP3
+                    - button:
+                        id: btn_drp3
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 391
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_drp3_name
+                              text: "${c_drp3_name}"
+                              align: TOP_MID
+                              y: 8
+                              text_font: font_small
+                              text_color: 0xDDEEFF
+                          - label:
+                              id: lbl_drp3_vals
+                              text: "R:80, A:140, P:ON"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(dr_speed_rpm)  = id(drp3_rpm);
+                              id(dr_acc)        = id(drp3_acc);
+                              id(dr_richtung)   = id(drp3_richtung);
+                              id(dr_motor_mode) = id(drp3_mode);
+                              id(dr_pumpe_auto) = id(drp3_pumpe);
+                              lv_arc_set_value(id(arc_dr_rpm), id(drp3_rpm));
+                              lv_arc_set_value(id(arc_dr_acc), id(drp3_acc));
+                              char b_rpm3[8]; snprintf(b_rpm3, sizeof(b_rpm3), "%d", id(drp3_rpm));
+                              lv_label_set_text(id(lbl_dr_rpm_val), b_rpm3);
+                              char b_acc3[8]; snprintf(b_acc3, sizeof(b_acc3), "%d", id(drp3_acc));
+                              lv_label_set_text(id(lbl_dr_acc_val), b_acc3);
+                              { float _rt = (float)(id(drp3_rpm) * 8) * (256 - id(drp3_acc)) * 0.00005f;
+                                char b_rt3[10]; snprintf(b_rt3, sizeof(b_rt3), "%.1fs", _rt);
+                                lv_label_set_text(id(lbl_dr_ramp_info), b_rt3); }
+                              if (id(drp3_richtung) > 0) {
+                                lv_label_set_text(id(lbl_dr_richtung), "Rechts \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a6b4a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_richtung), "Links \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a4a6b), 0);
+                              }
+                              if (id(drp3_mode) == 4) {
+                                lv_label_set_text(id(lbl_dr_mode), "Closed Loop");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x553388), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_mode), "FOC");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x336688), 0);
+                              }
+                              if (id(drp3_pumpe)) {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe 100%");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x1a5a8a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe: manuell");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x555555), 0);
+                              }
+                              ESP_LOGI("drpreset", "DP3 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(drp3_rpm)      = id(dr_speed_rpm);
+                              id(drp3_acc)      = id(dr_acc);
+                              id(drp3_richtung) = id(dr_richtung);
+                              id(drp3_mode)     = id(dr_motor_mode);
+                              id(drp3_pumpe)    = id(dr_pumpe_auto);
+                              char buf[28];
+                              snprintf(buf, sizeof(buf), "%s:%d, A:%d, P:%s",
+                                       id(drp3_richtung) > 0 ? "R" : "L",
+                                       id(drp3_rpm), id(drp3_acc),
+                                       id(drp3_pumpe) ? "ON" : "OFF");
+                              lv_label_set_text(id(lbl_drp3_vals), buf);
+                              ESP_LOGI("drpreset", "DP3 gespeichert");
+                    # DP4
+                    - button:
+                        id: btn_drp4
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 581
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_drp4_name
+                              text: "${c_drp4_name}"
+                              align: TOP_MID
+                              y: 8
+                              text_font: font_small
+                              text_color: 0xDDEEFF
+                          - label:
+                              id: lbl_drp4_vals
+                              text: "L:120, A:180, P:ON"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(dr_speed_rpm)  = id(drp4_rpm);
+                              id(dr_acc)        = id(drp4_acc);
+                              id(dr_richtung)   = id(drp4_richtung);
+                              id(dr_motor_mode) = id(drp4_mode);
+                              id(dr_pumpe_auto) = id(drp4_pumpe);
+                              lv_arc_set_value(id(arc_dr_rpm), id(drp4_rpm));
+                              lv_arc_set_value(id(arc_dr_acc), id(drp4_acc));
+                              char b_rpm4[8]; snprintf(b_rpm4, sizeof(b_rpm4), "%d", id(drp4_rpm));
+                              lv_label_set_text(id(lbl_dr_rpm_val), b_rpm4);
+                              char b_acc4[8]; snprintf(b_acc4, sizeof(b_acc4), "%d", id(drp4_acc));
+                              lv_label_set_text(id(lbl_dr_acc_val), b_acc4);
+                              { float _rt = (float)(id(drp4_rpm) * 8) * (256 - id(drp4_acc)) * 0.00005f;
+                                char b_rt4[10]; snprintf(b_rt4, sizeof(b_rt4), "%.1fs", _rt);
+                                lv_label_set_text(id(lbl_dr_ramp_info), b_rt4); }
+                              if (id(drp4_richtung) > 0) {
+                                lv_label_set_text(id(lbl_dr_richtung), "Rechts \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a6b4a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_richtung), "Links \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a4a6b), 0);
+                              }
+                              if (id(drp4_mode) == 4) {
+                                lv_label_set_text(id(lbl_dr_mode), "Closed Loop");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x553388), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_mode), "FOC");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x336688), 0);
+                              }
+                              if (id(drp4_pumpe)) {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe 100%");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x1a5a8a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe: manuell");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x555555), 0);
+                              }
+                              ESP_LOGI("drpreset", "DP4 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(drp4_rpm)      = id(dr_speed_rpm);
+                              id(drp4_acc)      = id(dr_acc);
+                              id(drp4_richtung) = id(dr_richtung);
+                              id(drp4_mode)     = id(dr_motor_mode);
+                              id(drp4_pumpe)    = id(dr_pumpe_auto);
+                              char buf[28];
+                              snprintf(buf, sizeof(buf), "%s:%d, A:%d, P:%s",
+                                       id(drp4_richtung) > 0 ? "R" : "L",
+                                       id(drp4_rpm), id(drp4_acc),
+                                       id(drp4_pumpe) ? "ON" : "OFF");
+                              lv_label_set_text(id(lbl_drp4_vals), buf);
+                              ESP_LOGI("drpreset", "DP4 gespeichert");
+                    # DP5
+                    - button:
+                        id: btn_drp5
+                        width: 178
+                        height: 80
+                        align: LEFT_MID
+                        x: 771
+                        styles: style_preset_btn
+                        widgets:
+                          - label:
+                              id: lbl_drp5_name
+                              text: "${c_drp5_name}"
+                              align: TOP_MID
+                              y: 8
+                              text_font: font_small
+                              text_color: 0xDDEEFF
+                          - label:
+                              id: lbl_drp5_vals
+                              text: "R:150, A:220, P:ON"
+                              align: BOTTOM_MID
+                              y: -8
+                              text_font: font_small
+                              text_color: 0xAABBFF
+                        on_short_click:
+                          - lambda: |-
+                              id(dr_speed_rpm)  = id(drp5_rpm);
+                              id(dr_acc)        = id(drp5_acc);
+                              id(dr_richtung)   = id(drp5_richtung);
+                              id(dr_motor_mode) = id(drp5_mode);
+                              id(dr_pumpe_auto) = id(drp5_pumpe);
+                              lv_arc_set_value(id(arc_dr_rpm), id(drp5_rpm));
+                              lv_arc_set_value(id(arc_dr_acc), id(drp5_acc));
+                              char b_rpm5[8]; snprintf(b_rpm5, sizeof(b_rpm5), "%d", id(drp5_rpm));
+                              lv_label_set_text(id(lbl_dr_rpm_val), b_rpm5);
+                              char b_acc5[8]; snprintf(b_acc5, sizeof(b_acc5), "%d", id(drp5_acc));
+                              lv_label_set_text(id(lbl_dr_acc_val), b_acc5);
+                              { float _rt = (float)(id(drp5_rpm) * 8) * (256 - id(drp5_acc)) * 0.00005f;
+                                char b_rt5[10]; snprintf(b_rt5, sizeof(b_rt5), "%.1fs", _rt);
+                                lv_label_set_text(id(lbl_dr_ramp_info), b_rt5); }
+                              if (id(drp5_richtung) > 0) {
+                                lv_label_set_text(id(lbl_dr_richtung), "Rechts \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a6b4a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_richtung), "Links \xef\x81\x8b");
+                                lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a4a6b), 0);
+                              }
+                              if (id(drp5_mode) == 4) {
+                                lv_label_set_text(id(lbl_dr_mode), "Closed Loop");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x553388), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_mode), "FOC");
+                                lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x336688), 0);
+                              }
+                              if (id(drp5_pumpe)) {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe 100%");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x1a5a8a), 0);
+                              } else {
+                                lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe: manuell");
+                                lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x555555), 0);
+                              }
+                              ESP_LOGI("drpreset", "DP5 geladen");
+                        on_long_press:
+                          - lambda: |-
+                              id(drp5_rpm)      = id(dr_speed_rpm);
+                              id(drp5_acc)      = id(dr_acc);
+                              id(drp5_richtung) = id(dr_richtung);
+                              id(drp5_mode)     = id(dr_motor_mode);
+                              id(drp5_pumpe)    = id(dr_pumpe_auto);
+                              char buf[28];
+                              snprintf(buf, sizeof(buf), "%s:%d, A:%d, P:%s",
+                                       id(drp5_richtung) > 0 ? "R" : "L",
+                                       id(drp5_rpm), id(drp5_acc),
+                                       id(drp5_pumpe) ? "ON" : "OFF");
+                              lv_label_set_text(id(lbl_drp5_vals), buf);
+                              ESP_LOGI("drpreset", "DP5 gespeichert");
+
+    # ── Exit-Button (liegt über dem TabView) ──────────────────────────────
+    - button:
+        id: btn_schwenker_settings_exit
+        width: 80
+        height: 55
+        align: TOP_RIGHT
+        x: -10
+        y: 10
+        bg_color: 0xCC3333
+        border_width: 0
+        shadow_width: 0
+        widgets:
+          - label:
+              text: "X"
+              align: CENTER
+              text_font: font_normal
+              text_color: 0xFFFFFF
+        on_click:
+          - lvgl.widget.hide: overlay_schwenker_settings

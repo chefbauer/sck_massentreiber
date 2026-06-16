@@ -1,0 +1,749 @@
+# ================================
+# Sensor Phalanx – Hardware Konfiguration
+# MLX90632 · VL53L4CD · SHT4x · BMP581 · VEML7700
+#
+# Alle Sensoren teilen sich den gemeinsamen I²C-Bus
+# der Hauptkonfiguration (main_config): "i2c_bus"
+# ================================
+# ── Komponenten ──────────────────────────────────────────────────────────────────
+#  sensor:          distance_sensor, sensor_sht4x_temp, sensor_sht4x_humi,
+#                   bmp_temperature, bmp_pressure, indoor_altitude,
+#                   sensor_veml7700_lux, sensor_Temp_OBJECT
+#  binary_sensor:   bin_objekt_vor_sensor, bin_standby
+#  globals:         global_lvgl_is_idle, global_emissivity, global_mat_type, global_mat_color
+#  interval:        500ms (AMG/Timer), 10s (LVGL-Idle-Check → global_lvgl_is_idle)
+#  button:          mlx_set_extended
+#  script:          script_close_temp_overlay, script_mlx90632_set_mode_continous_extended_16hz
+#
+#  LVGL-Widgets (out-of-tree, definiert in lvgl_overlay.yaml):
+#    obj_ir_circle       → roter FOV-Kreis (MLX90632 Messfeld bei Distanz d)
+#    obj_ir_circle_blue  → blauer Kreis (FOV bei Schrägdistanz Sensor→Dosenrand)
+#                           Dose Ø67mm, Radius 33,5mm: d_rand=sqrt(d²+33,5²)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+globals:
+  # LVGL-Idle-Flag: wird per interval: alle 10s per lvgl.is_idle aktualisiert
+  - id: global_lvgl_is_idle
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+  # IR-Emissivität: Laufzeitwert, kein NVS (immer 0.9 bei Neustart)
+  - id: global_emissivity
+    type: float
+    restore_value: false
+    initial_value: '0.9'
+
+  # Materialtyp: 0=Glas, 1=Dose matt, 2=Dose glänzend
+  - id: global_mat_type
+    type: int
+    restore_value: false
+    initial_value: '0'
+
+  # Farbindex: 0=schwarz, 1=dunkel, 2=mitte, 3=hell, 4=weiß, 5=silber
+  - id: global_mat_color
+    type: int
+    restore_value: false
+    initial_value: '3'
+
+interval:
+  # Prüft alle 10s ob LVGL idle ist → setzt global_lvgl_is_idle
+  - interval: 10s
+    then:
+      - if:
+          condition:
+            lvgl.is_idle:
+              timeout: ${c_standby_lvgl_idle}
+          then:
+            - globals.set:
+                id: global_lvgl_is_idle
+                value: 'true'
+          else:
+            - globals.set:
+                id: global_lvgl_is_idle
+                value: 'false'
+
+esphome:
+  includes: 
+      - includes/mlx_functions.h
+
+#external_components:
+#  #- source: github://mrtoy-me/esphome-vl53l1x
+#  - source: github://chefbauer/esphome_vl53l4cd@vl53l1x
+#    components: [vl53l1x]
+#    refresh: 1s     #1d  # Optional: Täglich auf Updates prüfen
+
+external_components:
+  - source: github://chefbauer/esphome_vlx53l4cd
+    components: [vl53l4cd]
+    refresh: 1s     #1d  # Optional: Täglich auf Updates prüfen
+
+i2c_device:
+  - id: i2c_mlx90632
+    address: 0x3A
+    i2c_id: i2c_bus
+
+sensor:
+  - platform: vl53l4cd
+    id: distance_sensor
+    name: vlx53l4cd Distanz
+    i2c_id: i2c_bus
+    address: 0x29              # optional, Standard: 0x29
+    timing_budget_ms: 200       # optional, Standard: 50 (10–200 ms)
+    inter_measurement_ms: 0    # optional, Standard: 0 (Continuous-Mode)
+    timeout_ms: 500            # optional, Standard: 500 ms
+    update_interval: ${c_tof_update_interval}
+    unit_of_measurement: "mm"
+    filters:
+      - lambda: |-
+          return x * 1000 - 17;     // - 26;             // Offset -26mm, Meter -> Millimeter
+    on_value:
+      then:
+        - lvgl.widget.refresh: distance_value_label
+        - lambda: |-
+            // Bar-Wert klemmen und gespiegelt setzen (nah=10mm → Wert=100 oben)
+            float d = x;
+            if (d < 10.0f) d = 10.0f;
+            if (d > 100.0f) d = 100.0f;
+            lv_bar_set_value(id(bar_distanz), (int)(110.0f - d), LV_ANIM_ON);
+            lv_label_set_text_fmt(id(lbl_dist_messung), "%.0fmm", x);
+            // IR-FOV-Kreis skalieren
+            // MLX90632 FOV 50° → Halbwinkel 25° → tan(25°) = 0.46631
+            // Display 7" diagonal, 1024×600px → 6.674 px/mm
+            if (!isnan(x) && x > 0.0f) {
+              const float TAN_25 = 0.46631f;
+              const float PX_PER_MM = 6.674f;
+              const float DOSE_RADIUS_MM = 33.5f;  // Dose Ø67mm → Radius 33,5mm
+              // Roter Kreis: MLX90632 FOV bei Messdistanz d
+              float diam_mm = 2.0f * x * TAN_25;
+              int dpx = (int)(diam_mm * PX_PER_MM);
+              if (dpx < 20) dpx = 20;
+              if (dpx > 560) dpx = 560;
+              lv_obj_set_size(id(obj_ir_circle), dpx, dpx);
+              lv_obj_set_style_radius(id(obj_ir_circle), LV_RADIUS_CIRCLE, 0);
+              lv_obj_set_size(id(obj_cross_h), dpx, 5);
+              lv_obj_set_size(id(obj_cross_v), 5, dpx);
+              lv_obj_align(id(obj_ir_circle), LV_ALIGN_CENTER, 0, 0);
+              lv_obj_align(id(obj_cross_h), LV_ALIGN_CENTER, 0, 0);
+              lv_obj_align(id(obj_cross_v), LV_ALIGN_CENTER, 0, 0);
+              lv_obj_invalidate(id(obj_ir_circle));
+              // Blauer Kreis: FOV bei Schrägdistanz Sensor→Dosenrand
+              // d_rand = sqrt(d² + r_dose²)  →  Ø_blau = 2 * d_rand * tan(25°) * px/mm
+              float d_rand = sqrtf(x * x + DOSE_RADIUS_MM * DOSE_RADIUS_MM);
+              float b_diam_mm = 2.0f * d_rand * TAN_25;
+              int bpx = (int)(b_diam_mm * PX_PER_MM);
+              if (bpx < 20) bpx = 20;
+              if (bpx > 580) bpx = 580;
+              lv_obj_set_size(id(obj_ir_circle_blue), bpx, bpx);
+              lv_obj_set_style_radius(id(obj_ir_circle_blue), LV_RADIUS_CIRCLE, 0);
+              lv_obj_align(id(obj_ir_circle_blue), LV_ALIGN_CENTER, 0, 0);
+              lv_obj_invalidate(id(obj_ir_circle_blue));
+            }
+
+  # ── VL53L1X – Time-of-Flight Distanzsensor ────────────────
+#  - platform: vl53l1x
+#    id: distance_sensor
+#    name: vlx53l4cd Distanz
+#    i2c_id: i2c_bus
+#    address: 0x29
+#    update_interval: 500ms
+#    distance_mode: short
+#    timeout: 50ms
+#    measurement_timing_budget: 300ms
+#    unit_of_measurement: "mm"
+#    accuracy_decimals: 0
+#    filters:
+#      - lambda: |-
+#          return x * 1000 - 26;             // Offset -26mm, Meter -> Millimeter
+
+  # ── SHT4x – Temperatur und Luftfeuchtigkeit ───────────────
+  - platform: sht4x
+    i2c_id: i2c_bus
+    update_interval: 1s
+    temperature:
+      id: sensor_sht4x_temp
+      name: "Temperature"
+      on_value:
+        then:
+          - lvgl.widget.refresh: temp_value_label
+          - lvgl.widget.refresh: lbl_statusbar_temp
+    humidity:
+      id: sensor_sht4x_humi
+      name: "Relative Humidity"
+      on_value:
+        then:
+          - lvgl.widget.refresh: hum_value_label
+
+  # ── BMP581 – Barometrischer Druck und Temperatur ──────────
+  - platform: bmp581_i2c
+    i2c_id: i2c_bus
+    update_interval: 1s
+    temperature:
+      name: "Indoor Temperature"
+      id: bmp_temperature
+    pressure:
+      name: "Indoor Pressure"
+      id: bmp_pressure
+      accuracy_decimals: 1
+      filters:
+        - lambda: return x/100;
+      on_value:
+        then:
+          - lvgl.widget.refresh: pressure_value_label
+
+  # ── Berechnete Höhe aus BMP581 (hypsometrische Formel) ────
+  - platform: template
+    name: "Indoor Altitude"
+    id: indoor_altitude
+    unit_of_measurement: "m"
+    icon: "mdi:image-filter-hdr"
+    device_class: distance
+    accuracy_decimals: 2
+    state_class: measurement
+    update_interval: 1s
+    on_value:
+      then:
+        - lvgl.widget.refresh: height_value_label
+    lambda: !lambda |-
+      static const float P0         = 1013.25f;   // Standard-Referenzdruck [hPa]
+      static const float lapse_rate = 0.0065f;    // K/m
+      static const float exp_val    = 0.19023f;   // ≈ 1/5.255
+
+      float p_hPa  = id(bmp_pressure).state;
+      float temp_c = id(bmp_temperature).state;
+
+      if (isnan(p_hPa) || p_hPa <= 300.0f || isnan(temp_c)) {
+        return NAN;
+      }
+
+      float temp_k = temp_c + 273.15f;
+      float ratio  = P0 / p_hPa;
+      float altitude = (temp_k / lapse_rate) * (powf(ratio, exp_val) - 1.0f);
+
+      if (altitude < -200.0f || altitude > 4000.0f) {
+        return NAN;
+      }
+      return altitude;
+
+  # ── VEML7700 – Umgebungslichtsensor ───────────────────────
+  - platform: veml7700
+    id: sensor_veml7700
+    i2c_id: i2c_bus
+    address: 0x10
+    update_interval: 2s
+    ambient_light:
+      id: sensor_veml7700_lux
+      name: "Ambient light"
+      on_value:
+        then:
+          - lvgl.widget.refresh: light_value_label
+          - lambda: |-
+              if (id(brightness_auto_mode)) {
+                // 0 lux → 50%, 100 lux → 100%, darüber gedeckelt
+                float pct_f = x * 0.5f + 50.0f;
+                if (pct_f > 100.0f) pct_f = 100.0f;
+                if (pct_f < 50.0f)  pct_f = 50.0f;
+                // Auf 5%-Raster runden → verhindert Dauerschwanken
+                int pct = (int)(pct_f / 5.0f + 0.5f) * 5;
+                int current = lv_slider_get_value(id(slider_helligkeit));
+                if (abs(pct - current) < 5) return;  // < 5% Änderung ignorieren
+                id(brightness_auto_updating) = true;
+                lv_slider_set_value(id(slider_helligkeit), pct, LV_ANIM_OFF);
+                id(brightness_auto_updating) = false;
+                auto call = id(light_screen_background).make_call();
+                call.set_brightness(pct / 100.0f);
+                call.perform();
+              }
+              if (id(led_auto_brightness)) {
+                // 1 lux → 20%, 100 lux → 100%, darüber gedeckelt; unter 1 lux = 20%
+                float lux = x < 1.0f ? 1.0f : x;
+                float pct_f;
+                if (lux >= 100.0f) {
+                  pct_f = 100.0f;
+                } else {
+                  // logarithmische Rampe: log(1)=0 → 20%, log(100)=2 → 100%
+                  pct_f = 20.0f + (log10f(lux) / 2.0f) * 80.0f;
+                }
+                if (pct_f < 20.0f) pct_f = 20.0f;
+                int led_pct = (int)(pct_f / 5.0f + 0.5f) * 5;
+                int led_cur = lv_slider_get_value(id(slider_led_helligkeit));
+                if (abs(led_pct - led_cur) < 5) return;
+                id(led_auto_updating) = true;
+                lv_slider_set_value(id(slider_led_helligkeit), led_pct, LV_ANIM_OFF);
+                lv_label_set_text_fmt(id(lbl_led_helligkeit_val), "%d%%", led_pct);
+                id(led_auto_updating) = false;
+                auto led_call = id(light_slots_outer).make_call();
+                led_call.set_brightness(led_pct / 100.0f);
+                led_call.perform();
+              }
+
+  # ── MLX90632 – IR-Objekttemperatur (berechnete Ableitung) ─
+  - platform: template
+    id: sensor_Temp_OBJECT
+    name: sensor_Temp_OBJECT
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    update_interval: ${c_ir_update_interval}
+    on_value:
+      then:
+        - lvgl.widget.refresh: mlx_value_label
+        - lvgl.widget.refresh: lbl_ts_temp
+    lambda: |-
+      static bool setup_mode = true;
+      uint8_t buf[2];
+      uint8_t new_buf[2];
+      uint16_t control = 0;
+      uint16_t new_control = 0;
+      constexpr uint16_t REG_CONTROL = 0x3001;
+
+      if (setup_mode) {
+        ESP_LOGI("mlx", "Erster Aufruf: Sensor-Setup wird durchgeführt...");
+        setup_mode = false;
+
+        // Vorher lesen + Bits loggen
+        if (id(i2c_mlx90632).read_register16(REG_CONTROL, buf, 2) == i2c::ERROR_OK) {
+            control = (buf[0] << 8) | buf[1];
+        }
+
+        // Neuer Wert: nur Bits 1,2 und 4-8 ändern
+        new_control = control;
+        new_control |= (0x3 << 1);    // Bits 1-2 = 11  // Continous
+        new_control |= (0x11 << 4);    // Bits 8:4 = 10001 (meas_select = 0x11)
+
+        new_buf[0] = static_cast<uint8_t>(new_control >> 8);
+        new_buf[1] = static_cast<uint8_t>(new_control & 0xFF);
+
+        if (id(i2c_mlx90632).write_register16(REG_CONTROL, new_buf, 2) == i2c::ERROR_OK) {
+            ESP_LOGI("mlx_button", "REG_CONTROL geschrieben: 0x%04X", new_control);
+        }
+        delay(500);
+      }
+
+      double emissivity = id(global_emissivity);  // Laufzeitwert, Default 0.9
+
+      static bool coeffs_read = false;
+      static int32_t P_R_raw = 0, P_G_raw = 0, P_T_raw = 0, P_O_raw = 0;
+      static int32_t Ea_raw = 0, Eb_raw = 0;
+      static int32_t Fa_raw = 0, Fb_raw = 0, Ga_raw = 0;
+      static int16_t EE_Gb = 0, EE_Ha = 0, EE_Hb = 0, EE_Ka = 0;
+
+      static double P_R = 0.0, P_G = 0.0, P_T = 0.0, P_O = 0.0;
+      static double Ea = 0.0, Eb = 0.0;
+      static double Fa = 0.0, Fb = 0.0, Ga = 0.0;
+      static double Gb = 0.0, Ka = 0.0, Ha = 0.0, Hb = 0.0;
+
+      if (!coeffs_read) {
+        ESP_LOGD("mlx", "Kalibrierkoeffizienten werden zum ersten Mal gelesen...");
+
+        auto read32 = [&](uint16_t lsw_addr, int32_t& raw) {
+          int16_t lsw = 0, msw = 0;
+          if (id(i2c_mlx90632).read_register16(lsw_addr,     buf, 2) == i2c::ERROR_OK)
+            lsw = (int16_t)((buf[0] << 8) | buf[1]);
+          if (id(i2c_mlx90632).read_register16(lsw_addr + 1, buf, 2) == i2c::ERROR_OK)
+            msw = (int16_t)((buf[0] << 8) | buf[1]);
+          raw = ((int32_t)msw << 16) | (int32_t)(lsw & 0xFFFF);
+        };
+
+        read32(0x240C, P_R_raw); P_R = (double)P_R_raw * pow(2, -8);
+        read32(0x240E, P_G_raw); P_G = (double)P_G_raw * pow(2, -20);
+        read32(0x2410, P_T_raw); P_T = (double)P_T_raw * pow(2, -44);
+        read32(0x2412, P_O_raw); P_O = (double)P_O_raw * pow(2, -8);
+
+        read32(0x2424, Ea_raw); Ea = (double)Ea_raw * pow(2, -16);
+        read32(0x2426, Eb_raw); Eb = (double)Eb_raw * pow(2, -8);
+        read32(0x2428, Fa_raw); Fa = (double)Fa_raw * pow(2, -46);
+        read32(0x242A, Fb_raw); Fb = (double)Fb_raw * pow(2, -36);
+        read32(0x242C, Ga_raw); Ga = (double)Ga_raw * pow(2, -36);
+
+        if (id(i2c_mlx90632).read_register16(0x242E, buf, 2) == i2c::ERROR_OK) EE_Gb = (int16_t)((buf[0] << 8) | buf[1]);
+        if (id(i2c_mlx90632).read_register16(0x242F, buf, 2) == i2c::ERROR_OK) EE_Ka = (int16_t)((buf[0] << 8) | buf[1]);
+        if (id(i2c_mlx90632).read_register16(0x2481, buf, 2) == i2c::ERROR_OK) EE_Ha = (int16_t)((buf[0] << 8) | buf[1]);
+        if (id(i2c_mlx90632).read_register16(0x2482, buf, 2) == i2c::ERROR_OK) EE_Hb = (int16_t)((buf[0] << 8) | buf[1]);
+
+        Gb = (double)EE_Gb * pow(2, -10);
+        Ka = (double)EE_Ka * pow(2, -10);
+        Ha = (double)EE_Ha * pow(2, -14);
+        Hb = (double)EE_Hb * pow(2, -10);
+
+        coeffs_read = true;
+      }
+
+      int16_t ram52 = 0, ram53 = 0, ram54 = 0, ram55 = 0;
+      int16_t ram56 = 0, ram57 = 0, ram58 = 0, ram59 = 0;
+
+      auto read_ram = [&](uint16_t addr, int16_t& val) {
+        if (id(i2c_mlx90632).read_register16(addr, buf, 2) == i2c::ERROR_OK)
+          val = (int16_t)((buf[0] << 8) | buf[1]);
+      };
+
+      read_ram(0x4033, ram52);
+      read_ram(0x4034, ram53);
+      read_ram(0x4035, ram54);
+      read_ram(0x4036, ram55);
+      read_ram(0x4037, ram56);
+      read_ram(0x4038, ram57);
+      read_ram(0x4039, ram58);
+      read_ram(0x403A, ram59);
+
+      int16_t ram_ambient = ram54;
+      int16_t ram_ref     = ram57;
+
+      double VRTA = (double)ram_ref + Gb * ((double)ram_ambient / 12.0);
+      double AMB  = ((double)ram_ambient / 12.0) / VRTA * (double)pow(2, 19);
+
+      double S    = ((double)ram52 - (double)ram53 - (double)ram55 + (double)ram56) / 2.0
+                    + (double)ram58 + (double)ram59;
+      double VRTO = (double)ram_ref + Ka * ((double)ram_ambient / 12.0);
+      double STO  = ((S / 12.0) / VRTO) * (double)pow(2, 19);
+
+      double Bsub        = AMB - P_R;
+      double ambient_temp = Bsub / P_G + P_T * (Bsub * Bsub) + P_O;
+
+      double TADUT = (AMB - Eb) / Ea + 25.0;
+      double TAK   = TADUT + 273.15;
+      double TAK4  = pow(TAK, 4);
+
+      double TODUT = ambient_temp;
+      double To    = 0.0;
+      for (int iter = 0; iter < 5; iter++) {
+        double denom = emissivity * Fa / 2.0 * Ha
+                       * (1.0 + Ga * (TODUT - 25.0) + Fb * (TADUT - 25.0));
+        To    = pow((STO / denom) + TAK4, 0.25) - 273.15 - Hb;
+        TODUT = To;
+      }
+
+      ESP_LOGD("mlx", "Object: %.2f °C | Ambient: %.2f °C", To, ambient_temp);
+      return To;
+
+
+# MLX
+button:
+  - platform: template
+    name: "MLX90632 Set 16Hz, Extended + Continuous"
+    id: mlx_set_extended
+    on_press:
+      then:
+        script.execute: script_mlx90632_set_mode_continous_extended_16hz
+
+binary_sensor:
+  - platform: template
+    id: bin_objekt_vor_sensor
+    name: "Objekt vor Sensor"
+    internal: true
+    lambda: |-
+      float d = id(distance_sensor).state;
+      if (isnan(d)) return false;  // Initialisierung: sicher AUS
+      // EIN: Objekt erkannt
+      if (d > 1.0f && d < 70.0f) return true;
+      // AUS: Objekt weg (Hysterese)
+      if (id(bin_objekt_vor_sensor).state && d > 200.0f) return false;
+      return {};
+    filters:
+      - delayed_off: 3s
+    on_press:
+      - lvgl.widget.show: overlay_temp_messung
+      - component.resume:
+          id: distance_sensor
+          update_interval: ${c_tof_update_interval_fast}
+      - component.resume:
+          id: sensor_Temp_OBJECT
+          update_interval: ${c_ir_update_interval_fast}
+    on_release:
+      - lvgl.widget.hide: overlay_temp_messung
+      - component.resume:
+          id: distance_sensor
+          update_interval: ${c_tof_update_interval}
+      - component.resume:
+          id: sensor_Temp_OBJECT
+          update_interval: ${c_ir_update_interval}
+
+  # ── Standby-Erkennung ──────────────────────────────────────────────────────────
+  # EIN wenn: TOF frei (>800mm oder NaN) UND LVGL idle (${c_standby_lvgl_idle})
+  # delayed_on: ${c_standby_delay} → erst nach dieser Zeit wird Standby aktiv
+  - platform: template
+    id: bin_standby
+    name: "Standby"
+    internal: true
+    lambda: |-
+      float d = id(distance_sensor).state;
+      bool tof_frei = isnan(d) || d > ${c_standby_tof_min_mm};
+      return tof_frei && id(global_lvgl_is_idle);
+    filters:
+      - delayed_on: ${c_standby_delay}
+      - delayed_off: 3s
+    on_press:
+      - lvgl.widget.show: lbl_standby_icon
+    on_release:
+      - lvgl.widget.hide: lbl_standby_icon
+
+script:
+    # Schließt overlay_temp_messung (X-Button / Touch auf Temp-Label)
+    - id: script_close_temp_overlay
+      mode: single
+      then:
+        - lvgl.widget.hide: overlay_temp_messung
+
+    - id: script_mlx90632_set_mode_continous_extended_16hz
+      then:
+        - lambda: |-
+            ESP_LOGI("mlx_button", "=== Setze Extended + Continuous ===");
+
+            uint8_t buf[2];
+            uint8_t new_buf[2];
+            uint16_t control = 0;
+            uint16_t new_control = 0;
+            uint16_t status = 0;
+            int32_t product_id = 0;
+            int32_t device_id = 0;
+            constexpr uint16_t REG_CONTROL = 0x3001;
+            constexpr uint16_t REG_STATUS = 0x3FFF;
+            constexpr uint16_t STAT_DATA_RDY = 1 << 0;
+            
+            static bool rate_set = false;
+
+            // // Hilfsfunktion für 32-Bit-Read (LSW + MSW)
+            // auto read32 = [&](uint16_t lsw_addr, int32_t& var) {
+            //     int16_t lsw = 0, msw = 0;
+            //     if (id(i2c_mlx90632).read_register16(lsw_addr, buf, 2) == i2c::ERROR_OK) {
+            //     lsw = (int16_t)((buf[0] << 8) | buf[1]);
+            //     } else {
+            //     ESP_LOGE("mlx_info", "Fehler LSW 0x%04X", lsw_addr);
+            //     }
+            //     if (id(i2c_mlx90632).read_register16(lsw_addr + 1, buf, 2) == i2c::ERROR_OK) {
+            //     msw = (int16_t)((buf[0] << 8) | buf[1]);
+            //     } else {
+            //     ESP_LOGE("mlx_info", "Fehler MSW 0x%04X", lsw_addr + 1);
+            //     }
+            //     var = ((int32_t)msw << 16) | (int32_t)(lsw & 0xFFFF);
+            // };
+
+            // ESP_LOGD("mlx", "Adafruit Addressed Reset (0x3005 = 0x0006) startet...");
+
+            // // Exakt Adafruit: 4 Bytes schreiben (Adresse 0x3005 + Daten 0x0006)
+            // uint8_t reset_cmd[4] = {0x30, 0x05, 0x00, 0x06};
+            // esp_err_t err = id(i2c_mlx90632)->write(reset_cmd, 4);
+
+            // 1. Addressed Reset (0x0006 an 0x3005) – sehr hilfreich gegen Sticky-States
+            uint8_t reset_buf[2] = {0x00, 0x06};
+            id(i2c_mlx90632).write_register16(0x3005U, reset_buf, 2);
+            delay(180);  // Reset braucht etwas Zeit
+
+
+            // Product ID (0x2400-0x2401)
+            read32(0x2400, product_id);
+
+            // Device ID / Variant (0x2402-0x2403)
+            read32(0x2402, device_id);
+
+            // Status-Register (0x3FFF)
+            if (id(i2c_mlx90632).read_register16(0x3FFF, buf, 2) == i2c::ERROR_OK) {
+                status = (buf[0] << 8) | buf[1];
+            } else {
+                ESP_LOGE("mlx_info", "Fehler Status-Register 0x3FFF");
+            }
+            // Control-Register (0x3001) – meas_select
+            if (id(i2c_mlx90632).read_register16(0x3001, buf, 2) == i2c::ERROR_OK) {
+                control = (buf[0] << 8) | buf[1];
+            } else {
+                ESP_LOGE("mlx_info", "Fehler Control-Register 0x3001");
+            }
+
+            // RATE AUSLESEN
+            ESP_LOGD("mlx", "Prüfe & setze Refresh-Rate auf 16 Hz (nur einmal)");
+
+
+            uint16_t meas1 = read16(0x24E1);
+            uint16_t meas2 = read16(0x24E2);
+            uint8_t rate1 = (meas1 >> 8) & 0x07;
+            uint8_t rate2 = (meas2 >> 8) & 0x07;
+            float hz1 = 0.5 * (1 << rate1);
+            float hz2 = 0.5 * (1 << rate2);
+            ESP_LOGD("mlx", "Aktuell EE_MEAS_1: 0x%04X → %.1f Hz", meas1, hz1);
+            ESP_LOGD("mlx", "Aktuell EE_MEAS_2: 0x%04X → %.1f Hz", meas2, hz2);
+
+            if (rate1 == 0x05 && rate2 == 0x05) {
+                ESP_LOGD("mlx", "Bereits 16 Hz eingestellt – kein Schreiben nötig");
+                rate_set = true;
+            }
+            else
+            {
+                //////////////////////////////////
+                // RATE 16Hz
+                ESP_LOGD("mlx", "Rate nicht 16 Hz → Setze 16 Hz (nur relevante Bits ändern)");
+
+                // Hilfsfunktion: Schreiben eines einzelnen EEPROM-Worts (mit Erase → Unlock → Write → Reset → Verify)
+ 
+
+
+                // UMSTELLUNG STEP MODE
+                if (id(i2c_mlx90632).read_register16(REG_CONTROL, buf, 2) == i2c::ERROR_OK) {
+                    control = (buf[0] << 8) | buf[1];
+                } else {
+                    ESP_LOGE("mlx_button", "Vorher Read fehlgeschlagen");
+                    return;
+                }
+
+                // Neuer Wert: nur Bits 1,2 und 4-8 ändern
+                new_control = control;
+                new_control &= ~(0x03 << 1); // Bits 1-2 löschen HALT MODE         
+                // new_control |= (0x2 << 1);    // Bits 1-2 = 00  // STEP
+                new_buf[0] = static_cast<uint8_t>(new_control >> 8);
+                new_buf[1] = static_cast<uint8_t>(new_control & 0xFF);
+
+                if (id(i2c_mlx90632).write_register16(REG_CONTROL, new_buf, 2) == i2c::ERROR_OK) {
+                    ESP_LOGI("mlx_button", "REG_CONTROL geschrieben: 0x%04X", new_control);
+                }
+                delay(500);
+
+
+                // // MEAS1: nur Bits 10:8 auf 4 setzen (8 Hz), Rest unverändert
+                // uint16_t new_meas1 = meas1;
+                // new_meas1 &= ~(0x07 << 8);   // Bits 10:8 löschen
+                // new_meas1 |= (0x04 << 8);    // Bits 10:8 = 4 (8 Hz)
+
+                // // MEAS2: nur Bits 10:8 auf 4 setzen, Rest unverändert
+                // uint16_t new_meas2 = meas2;
+                // new_meas2 &= ~(0x07 << 8);
+                // new_meas2 |= (0x04 << 8);
+
+                // uint8_t meas1_buf[2] = {
+                //     static_cast<uint8_t>((new_meas1 >> 8) & 0xFF),  // MSB – oberes Byte zuerst
+                //     static_cast<uint8_t>(new_meas1 & 0xFF)          // LSB – unteres Byte danach
+                // };
+                // uint8_t meas2_buf[2] = {
+                //     static_cast<uint8_t>((new_meas2 >> 8) & 0xFF),  // MSB – oberes Byte zuerst
+                //     static_cast<uint8_t>(new_meas2 & 0xFF)          // LSB – unteres Byte danach
+                // };
+                // delay(500);
+
+                bool meas1_ok = mlx_safe_write_eeprom(0x24E1U, 0x850D, "MEAS1");
+                delay(500);
+                bool meas2_ok = mlx_safe_write_eeprom(0x24E2U, 0x851D, "MEAS2");
+
+                if (meas1_ok && meas2_ok) {
+                    ESP_LOGI("mlx", "Refresh-Rate erfolgreich auf 16 Hz gesetzt (beide Zellen)");
+                    rate_set = true;
+
+                    // Optional: nochmal 1–2 Sekunden warten und die tatsächliche Messrate prüfen
+                    delay(1500);
+                    // Hier könntest du z.B. 10 Messungen mit Zeitstempel machen, um ~125 ms Abstand zu sehen
+                } else {
+                    ESP_LOGE("mlx", "EEPROM-Programmierung fehlgeschlagen – Rate bleibt bei 2 Hz");
+                }
+
+                // Nachher lesen
+                uint16_t verify_meas1 = read16(0x24E1);
+                uint16_t verify_meas2 = read16(0x24E2);
+                ESP_LOGD("mlx", "Nachher EE_MEAS1: 0x%04X", verify_meas1);
+                ESP_LOGD("mlx", "Nachher EE_MEAS2: 0x%04X", verify_meas2);
+
+                rate_set = true;
+            }
+            
+            
+            // Logging – bei jedem Update
+            ESP_LOGI("mlx_info", "Product ID (0x2400-0x2401): 0x%08X (%ld)", (uint32_t)product_id, product_id);
+            ESP_LOGI("mlx_info", "Device ID / Variant (0x2402-0x2403): 0x%08X (%ld)", (uint32_t)device_id, device_id);
+
+            ESP_LOGI("mlx_info", "Status-Register (0x3FFF): 0x%04X", status);
+            ESP_LOGD("mlx_info", "  DATA_RDY: %d", (status & 0x0800) >> 11);
+            ESP_LOGD("mlx_info", "  EE_RDY: %d", (status & 0x0400) >> 10);
+            ESP_LOGD("mlx_info", "  BROWN_OUT: %d", (status & 0x0200) >> 9);
+            ESP_LOGD("mlx_info", "  CYCLE_MEAS: %d", (status & 0x0100) >> 8);
+
+            ESP_LOGI("mlx_info", "Control-Register (0x3001): 0x%04X", control);
+            uint8_t meas_select = (control >> 4) & 0x1F;
+            ESP_LOGD("mlx_info", "  meas_select: 0x%02X", meas_select);
+            ESP_LOGD("mlx_info", "  Continuous: %s", (meas_select & 0x10) ? "Ja" : "Nein");
+            ESP_LOGD("mlx_info", "  Extended: %s", (meas_select & 0x01) ? "Ja" : "Nein");
+
+            // Medical / Normal / Fake-Erkennung (typische Muster)
+            if (product_id == 0x5A5A5A5A) {
+                ESP_LOGI("mlx_info", "→ Erkannt: Echter Melexis MLX90632 (Product ID 0x5A5A5A5A)");
+                if (meas_select == 0x11 || meas_select == 0x17) {
+                ESP_LOGI("mlx_info", "→ Modus: Extended + Continuous → wahrscheinlich Medical-Version");
+                } else {
+                ESP_LOGI("mlx_info", "→ Modus: Normal / Standard");
+                }
+            } else if (product_id == 0) {
+                ESP_LOGE("mlx_info", "→ WARNUNG: Product ID = 0 → Sensor antwortet nicht richtig (Fake / Defekt?)");
+            } else {
+                ESP_LOGW("mlx_info", "→ Unbekannte Product ID (0x%08X) – möglicher Fake oder Sonder-Variante", (uint32_t)product_id);
+            }
+
+            // Status-Register lesen und Bits loggen (am Start)
+            if (id(i2c_mlx90632).read_register16(REG_STATUS, buf, 2) == i2c::ERROR_OK) {
+                status = (buf[0] << 8) | buf[1];
+                ESP_LOGD("mlx", "REG_STATUS (0x3FFF): 0x%04X", status);
+                ESP_LOGD("mlx", "  DATA_RDY: %d", (status & STAT_DATA_RDY) != 0);
+
+                // Clean Start: NEW_DATA-Bit (DATA_RDY) auf 0 setzen
+                uint16_t new_status = status & ~STAT_DATA_RDY;
+
+                new_buf[0] = static_cast<uint8_t>(new_status >> 8);
+                new_buf[1] = static_cast<uint8_t>(new_status & 0xFF);
+                 
+                if (id(i2c_mlx90632).write_register16(REG_STATUS, new_buf, 2) == i2c::ERROR_OK) {
+                    ESP_LOGD("mlx", "REG_STATUS clean geschrieben: 0x%04X", new_status);
+                } else {
+                    ESP_LOGE("mlx", "REG_STATUS Write fehlgeschlagen");
+                }
+
+            } else {
+                ESP_LOGE("mlx", "REG_STATUS Read fehlgeschlagen");
+            }
+
+            delay(1000);
+
+            // Vorher lesen + Bits loggen
+            if (id(i2c_mlx90632).read_register16(REG_CONTROL, buf, 2) == i2c::ERROR_OK) {
+                control = (buf[0] << 8) | buf[1];
+                ESP_LOGI("mlx_button", "Vorher REG_CONTROL: 0x%04X", control);
+                ESP_LOGI("mlx_button", "Bits: 15-0: %d%d%d%d %d%d%d%d %d%d%d%d %d%d%d%d",
+                            (control >> 15) & 1, (control >> 14) & 1, (control >> 13) & 1, (control >> 12) & 1,
+                            (control >> 11) & 1, (control >> 10) & 1, (control >>  9) & 1, (control >>  8) & 1,
+                            (control >>  7) & 1, (control >>  6) & 1, (control >>  5) & 1, (control >>  4) & 1,
+                            (control >>  3) & 1, (control >>  2) & 1, (control >>  1) & 1, (control >>  0) & 1);
+            } else {
+                ESP_LOGE("mlx_button", "Vorher Read fehlgeschlagen");
+                return;
+            }
+
+            // Neuer Wert: nur Bits 1,2 und 4-8 ändern
+            new_control = control;
+            // new_control &= ~(0x01 << 0);    // Bit 0 = 0
+            // new_control |= (0x01 << 1);     // Bit 1 = 1
+            // new_control |= (0x01 << 2);     // Bit 2 = 1
+            new_control |= (0x3 << 1);    // Bits 1-2 = 11  // Continous
+            new_control |= (0x11 << 4);    // Bits 8:4 = 10001 (meas_select = 0x11)
+
+            new_buf[0] = static_cast<uint8_t>(new_control >> 8);
+            new_buf[1] = static_cast<uint8_t>(new_control & 0xFF);
+
+            if (id(i2c_mlx90632).write_register16(REG_CONTROL, new_buf, 2) == i2c::ERROR_OK) {
+                ESP_LOGI("mlx_button", "REG_CONTROL geschrieben: 0x%04X", new_control);
+                ESP_LOGI("mlx_button", "Bits: 15-0: %d%d%d%d %d%d%d%d %d%d%d%d %d%d%d%d",
+                            (new_control >> 15) & 1, (new_control >> 14) & 1, (new_control >> 13) & 1, (new_control >> 12) & 1,
+                            (new_control >> 11) & 1, (new_control >> 10) & 1, (new_control >>  9) & 1, (new_control >>  8) & 1,
+                            (new_control >>  7) & 1, (new_control >>  6) & 1, (new_control >>  5) & 1, (new_control >>  4) & 1,
+                            (new_control >>  3) & 1, (new_control >>  2) & 1, (new_control >>  1) & 1, (new_control >>  0) & 1);
+            } else {
+                ESP_LOGE("mlx_button", "Write fehlgeschlagen");
+                return;
+            }
+
+            delay(50);
+
+            // Nachher lesen + Bits loggen
+            if (id(i2c_mlx90632).read_register16(REG_CONTROL, buf, 2) == i2c::ERROR_OK) {
+            control = (buf[0] << 8) | buf[1];
+            ESP_LOGI("mlx_button", "Nachher REG_CONTROL: 0x%04X", control);
+            ESP_LOGI("mlx_button", "Bits: 15-0: %d%d%d%d %d%d%d%d %d%d%d%d %d%d%d%d",
+                        (control >> 15) & 1, (control >> 14) & 1, (control >> 13) & 1, (control >> 12) & 1,
+                        (control >> 11) & 1, (control >> 10) & 1, (control >>  9) & 1, (control >>  8) & 1,
+                        (control >>  7) & 1, (control >>  6) & 1, (control >>  5) & 1, (control >>  4) & 1,
+                        (control >>  3) & 1, (control >>  2) & 1, (control >>  1) & 1, (control >>  0) & 1);
+            } else {
+                ESP_LOGE("mlx_button", "Nachher Read fehlgeschlagen");
+            }
+            ESP_LOGI("mlx_button", "=== Setzen beendet ===");

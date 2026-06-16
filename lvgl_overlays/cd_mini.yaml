@@ -1,0 +1,165 @@
+# ── Countdown Minuten-Wahl Mini-Overlay ──────────────────────────────────────────
+# Aufbau:
+#   Kopfzeile:      "Minuten:"             [X]
+#   Dosen-Reihe:    jar-Icon | 1 | 1.5 | 2 | 2.5 | 3 | 3.5
+#   Flaschen-Reihe: bottle-Icon | 4 | 5 | 6 | 7 | 8 | 9
+#
+# Position wird in script_open_countdown_overlay dynamisch gesetzt:
+#   Slots 0-2 (links):  x=15,  y=slot_y
+#   Slots 3-5 (rechts): x=609, y=slot_y   (rechtsbündig, 1024-400-15=609)
+#
+# Icons:  \uF4A6 = FA jar (Dose)   \uF72F = FA wine-bottle (Flasche)
+# Fonts:  font_icons (40px FA) für Row-Icons | font_cd_btn (42px Roboto) für Zahlen
+# Script: set_countdown_secs(secs: int)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+obj:
+  id: overlay_cd_mini
+  width: 510
+  height: 198
+  align: TOP_LEFT
+  x: 15
+  y: 110
+  bg_color: 0xEEEEEE
+  bg_opa: 97%
+  border_width: 2
+  border_color: 0x888888
+  radius: 12
+  hidden: true
+  pad_all: 6
+  scrollable: false
+  clickable: false
+  widgets:
+
+    # ── Kopfzeile: "Minuten:" + X ──────────────────────────────────────────────
+    - obj:
+        width: 100%
+        height: 66
+        align: TOP_MID
+        y: 0
+        bg_opa: TRANSP
+        border_width: 0
+        pad_all: 0
+        scrollable: false
+        clickable: false
+        widgets:
+          - label:
+              text: "Minuten:"
+              text_font: font_normal
+              text_color: 0x222222
+              align: LEFT_MID
+          - button:
+              width: 63
+              height: 63
+              align: RIGHT_MID
+              bg_color: 0xCC0000
+              bg_opa: COVER
+              radius: 6
+              border_width: 0
+              on_click:
+                - lambda: |-
+                    lv_obj_add_flag(id(overlay_cd_mini), LV_OBJ_FLAG_HIDDEN);
+              widgets:
+                - label:
+                    text: "X"
+                    text_font: font_normal
+                    text_color: 0xFFFFFF
+                    align: CENTER
+
+    # ── Dosen-Reihe: jar-Icon | 1 | 1.5 | 2 | 2.5 | 3 ────────────────────────
+    - obj:
+        width: 100%
+        height: 54
+        align: TOP_MID
+        y: 72
+        bg_opa: TRANSP
+        border_width: 0
+        pad_all: 0
+        scrollable: false
+        clickable: false
+        widgets:
+          - label:
+              text: "\ue516"
+              text_font: font_icons
+              text_color: 0x333333
+              align: LEFT_MID
+              x: 2
+          - buttonmatrix:
+              id: btnmatrix_cd_can
+              width: 444
+              height: 100%
+              align: LEFT_MID
+              x: 50
+              bg_opa: TRANSP
+              border_width: 0
+              pad_all: 0
+              items:
+                bg_color: 0x444444
+                bg_opa: COVER
+                border_width: 0
+                radius: 6
+                pad_all: 5
+                text_font: font_cd_btn
+                text_color: 0xFFFFFF
+              rows:
+                - buttons:
+                    - text: "1"
+                    - text: "1.5"
+                    - text: "2"
+                    - text: "2.5"
+                    - text: "3"
+                    - text: "3.5"
+              on_press:
+                - lambda: |-
+                    uint32_t btn = lv_buttonmatrix_get_selected_button((lv_obj_t*)lv_event_get_target(event));
+                    const int secs[] = {60, 90, 120, 150, 180, 210};
+                    if (btn < 6) id(set_countdown_secs).execute(secs[btn]);
+
+    # ── Flaschen-Reihe: bottle-Icon | 4 | 5 | 6 | 7 | 8 | 9 ──────────────────
+    - obj:
+        width: 100%
+        height: 54
+        align: TOP_MID
+        y: 132
+        bg_opa: TRANSP
+        border_width: 0
+        pad_all: 0
+        scrollable: false
+        clickable: false
+        widgets:
+          - label:
+              text: "\uF72F"
+              text_font: font_icons
+              text_color: 0x333333
+              align: LEFT_MID
+              x: 2
+          - buttonmatrix:
+              id: btnmatrix_cd_bottle
+              width: 444
+              height: 100%
+              align: LEFT_MID
+              x: 50
+              bg_opa: TRANSP
+              border_width: 0
+              pad_all: 0
+              items:
+                bg_color: 0x444444
+                bg_opa: COVER
+                border_width: 0
+                radius: 6
+                pad_all: 5
+                text_font: font_cd_btn
+                text_color: 0xFFFFFF
+              rows:
+                - buttons:
+                    - text: "4"
+                    - text: "5"
+                    - text: "6"
+                    - text: "7"
+                    - text: "8"
+                    - text: "9"
+              on_press:
+                - lambda: |-
+                    uint32_t btn = lv_buttonmatrix_get_selected_button((lv_obj_t*)lv_event_get_target(event));
+                    const int secs[] = {240, 300, 360, 420, 480, 540};
+                    if (btn < 6) id(set_countdown_secs).execute(secs[btn]);

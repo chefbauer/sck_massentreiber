@@ -1,0 +1,1321 @@
+# ============================================================
+# Schwenker – F6 Motorbetrieb (MKS Servo42D CAN-Bus)
+# ============================================================
+#
+# ┌─────────────────────────────────────────────────────────┐
+# │  MKS Servo42D – SPEED-KONVENTION (F5 / F6 / F4)        │
+# │                                                         │
+# │  speed_raw = rpm × (mstep / 16)                         │
+# │                                                         │
+# │  mstep 16/32/64 → speed_raw = rpm      (nativ, Firmware kompensiert intern) │
+# │  Nur außerhalb 16–64 muss manuell gerechnet werden:              │
+# │  mstep   8 → rpm × 0,5  (selten)                              │
+# │  mstep 128 → rpm × 8   (Drehmodus)                             │
+# │  mstep 256 → rpm × 16  (Schwenkmodus)                          │
+# │                                                         │
+# │  Für mstep 16–64: speed_raw = rpm (nativ, kein Faktor nötig!)    │
+# │  Außerhalb: speed_raw = rpm × (mstep/16) – immer manuell!       │
+# │                                                         │
+# │  acc:  1–254  = Motor interpoliert Rampe intern          │
+# │        0 / 255 = KEIN Ramping → harter Ruck!             │
+# │                                                         │
+# │  F4-Format: { 0xF4, spd_H, spd_L, acc, pos_HH, pos_H, pos_L }
+# │  F5-Format: { 0xF5, spd_H, spd_L, acc, pos_HH, pos_H, pos_L }
+# │  F6-Format: via gen_data_can_motor_set_speed(id, dir, raw, acc)
+# └─────────────────────────────────────────────────────────┘
+#
+# Parameter:
+#   sw_halbperiode_ms :  Zeit von Start bis Richtungswechsel
+#   sw_max_speed_rpm  :  Fahrgeschwindigkeit in echten RPM
+#   sw_acc            :  5–100 % Beschleunigung (acc-Byte = round(pct/100 × 254))
+#   sw_motor_ramp     :  Motor-internes acc-Byte (1–254) für 50ms-Stufenglättung
+#
+# ============================================================
+# ── Komponenten ──────────────────────────────────────────────────────────────────
+#  globals:  sw_aktiv, sw_richtung, sw_phase_ms, sw_halbperiode_ms,
+#            sw_max_speed_rpm, sw_acc, sw_motor_ramp, sw_work_current_mA,
+#            sw_motor_last_move_ms, sw_motor_busy, sw_stop_pending,
+#            slider_trim_last, pumpe_a_aktiv,
+#            preset[1..5]_hp_ms / _rpm / _acc
+#            dr_aktiv, dr_modus, dr_speed_rpm, dr_acc, dr_richtung, dr_motor_mode
+#            dr_pumpe_auto
+#            drp[1..5]_rpm / _acc / _richtung / _mode / _pumpe
+#            global_rv_aktiv, rv_auto_phase_ms, rv_auto_pump_on
+#  script:   script_schwenker_settings_open, script_schwenker_start,
+#            script_schwenker_stop, script_schwenker_goto_slot,
+#            script_motor_reboot, script_pumpe_a_kurz, script_pumpe_a_lang,
+#            script_pumpe_a_aus, script_system_ein, script_system_aus,
+#            script_drehen_start, script_drehen_stop, script_drehen_settings_open
+#  button:   btn_motor_toggle
+#  interval: (kein id)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+globals:
+  # ── Laufzustand ──────────────────────────────────────────
+  - id: sw_aktiv
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  # ── Speed-Sinus ──────────────────────────────────────────────
+  - id: sw_richtung
+    type: int
+    restore_value: no
+    initial_value: '1'          # +1 = Richtung CW, -1 = CCW
+
+  - id: sw_phase_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'          # Fortschritt innerhalb der aktuellen Halbperiode
+
+  # ── Konfiguration ─────────────────────────────────────────────
+  - id: sw_halbperiode_ms
+    type: uint32_t
+    restore_value: yes
+    initial_value: '3000'       # 3 s pro Richtung
+
+  - id: sw_max_speed_rpm
+    type: int
+    restore_value: yes
+    initial_value: '100'        # RPM am Sinus-Scheitel
+
+  - id: sw_acc
+    type: int
+    restore_value: yes
+    initial_value: '50'         # 5–100 % Beschleunigung (5%-Schritte); 100 % = acc_byte 254 = schnellste nutzbare Motorrampe
+                                # 5 % = acc_byte ~13 = sanfteste Rampe | Formel: round(pct/100*254); 0/255 = Ruck!
+
+  - id: sw_motor_ramp           # [VERALTET] war Motor-acc-Byte für Sinus/F5-Modus; ersetzt durch sw_acc
+    type: int
+    restore_value: yes          # NVS-Key beibehalten für Sinus-Rollback
+    initial_value: '200'        # Originalwert belassen
+
+  - id: sw_work_current_mA    # Arbeitsstrom in mA – aus Einstellungs-Slider gespeichert
+    type: int
+    restore_value: yes
+    initial_value: '1000'       # 500–2000 mA
+
+  - id: sw_motor_last_move_ms  # millis() beim letzten Motorstop – 0 = Timeout inaktiv
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+
+  - id: sw_motor_busy          # true = Motor läuft aktiv (Idle-Timeout gesperrt)
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: sw_stop_pending        # true = Stop nach aktuellem Halbzyklus
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: sw_braking             # true = Richtungswechsel läuft: Speed=0 gesendet, warte auf Stillstand
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: sw_pos_prev            # Winkel-Snapshot für Stillstandserkennung (0–16383, -1=ungültig)
+    type: int
+    restore_value: no
+    initial_value: '-1'
+
+  - id: sw_auto_stop_armed     # true = Schwenker soll stoppen wenn alle Timer/CDs enden
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: dr_auto_stop_armed     # true = Drehmodus soll stoppen wenn alle Timer/CDs enden
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: sw_auto_stop_slot      # Slot-Index (0-basiert) für Auto-Stop-Positionsfahrt
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+  - id: slider_trim_last       # merkt sich den letzten Slider-Wert für Delta-Berechnung
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+  - id: pumpe_a_aktiv          # Turmpumpe / Beckenfüllung aktiv (Pumpe A = dacA läuft)
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  # ── F4-Testmodus ──────────────────────────────────────────
+  - id: sw_test_aktiv
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: sw_test_richtung       # +1 = CW, -1 = CCW
+    type: int
+    restore_value: no
+    initial_value: '1'
+
+  - id: sw_test_winkel         # Winkel pro Richtung in Grad
+    type: float
+    restore_value: yes
+    initial_value: '20.0'
+
+  - id: sw_test_speed          # Geschwindigkeit in RPM
+    type: int
+    restore_value: yes
+    initial_value: '5'
+
+  - id: sw_test_acc            # Beschleunigung 1–254
+    type: int
+    restore_value: yes
+    initial_value: '50'
+
+  # ── Schwenker-Presets ─────────────────────────────────────
+  - id: preset1_hp_ms
+    type: uint32_t
+    restore_value: yes
+    initial_value: '3200'   # 3.2 s
+  - id: preset1_rpm
+    type: int
+    restore_value: yes
+    initial_value: '4'
+
+  - id: preset2_hp_ms
+    type: uint32_t
+    restore_value: yes
+    initial_value: '2000'   # 2.0 s
+  - id: preset2_rpm
+    type: int
+    restore_value: yes
+    initial_value: '8'
+
+  - id: preset3_hp_ms
+    type: uint32_t
+    restore_value: yes
+    initial_value: '5000'   # 5.0 s
+  - id: preset3_rpm
+    type: int
+    restore_value: yes
+    initial_value: '12'
+
+  - id: preset1_acc
+    type: int
+    restore_value: yes
+    initial_value: '100'
+  - id: preset2_acc
+    type: int
+    restore_value: yes
+    initial_value: '100'
+  - id: preset3_acc
+    type: int
+    restore_value: yes
+    initial_value: '100'
+
+  - id: preset4_hp_ms
+    type: uint32_t
+    restore_value: yes
+    initial_value: '3000'   # 3.0 s
+  - id: preset4_rpm
+    type: int
+    restore_value: yes
+    initial_value: '6'
+  - id: preset4_acc
+    type: int
+    restore_value: yes
+    initial_value: '75'
+
+  - id: preset5_hp_ms
+    type: uint32_t
+    restore_value: yes
+    initial_value: '5000'   # 5.0 s
+  - id: preset5_rpm
+    type: int
+    restore_value: yes
+    initial_value: '20'
+  - id: preset5_acc
+    type: int
+    restore_value: yes
+    initial_value: '50'
+
+  # ── Drehmodus ──────────────────────────────────────────────
+  - id: dr_aktiv             # true = Drehmodus läuft
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: dr_modus             # letzter aktiver Modus: false=Schwenken, true=Drehen
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+
+  - id: dr_speed_rpm         # Drehgeschwindigkeit 1–150 UPM (echte UPM; F6-Wert = ×8 wegen 128 Sub)
+    type: int
+    restore_value: yes
+    initial_value: '30'
+
+  - id: dr_acc               # Motor-acc 1–254 (0/255 = kein Ramping!); Hardware-Rampe im Motor
+    type: int
+    restore_value: yes
+    initial_value: '80'         # 80 ≈ ~3s auf 30 UPM; (256-80)*0.05ms×240steps=2.11s
+
+  - id: dr_richtung          # +1 = CW, -1 = CCW
+    type: int
+    restore_value: yes
+    initial_value: '1'
+
+  - id: dr_motor_mode        # 4 = Closed Loop, 5 = FOC
+    type: int
+    restore_value: yes
+    initial_value: '4'
+
+  - id: dr_current_rpm       # aktuell gesendete Drehzahl (Software-Rampe)
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+  - id: dr_ramp_last_ms      # millis() beim letzten Ramp-Schritt
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+
+  - id: dr_last_sent_rpm     # zuletzt per F5 gesendete Drehzahl (-1 = noch nie)
+    type: int
+    restore_value: no
+    initial_value: '-1'
+
+  - id: pumpe_vor_drehen_level  # DAC-Level vor Drehen (-1 = Pumpe war aus)
+    type: float
+    restore_value: no
+    initial_value: '-1.0'
+
+  - id: auto_motorbetrieb        # true = Automatik-Betrieb aktiv (Startbildschirm-Toggle)
+    type: bool
+    restore_value: no            # beim Reboot immer AN
+    initial_value: 'true'
+
+  - id: dr_pumpe_auto          # true = Turmpumpe (dacA) beim Drehmodus auf 100% setzen
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+
+  - id: pumpe_a_modus           # 0=AUS, 1=MANUELL, 2=AUTO (immer AUTO beim Boot)
+    type: int
+    restore_value: no
+    initial_value: '2'
+
+  - id: pumpe_a_modus_vor_turbo # Modus vor TURBO-Start merken
+    type: int
+    restore_value: no
+    initial_value: '1'
+
+  - id: pumpe_a_auto_war_an     # AUTO-Intern: war Pumpe durch AUTO eingeschaltet?
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  # ── Rückschlagventil (RV) ─────────────────────────────────
+  - id: global_rv_aktiv          # RV eingebaut: true = kein Turbo beim Drehen, stattdessen Interval-Modus
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+
+  - id: rv_auto_phase_ms         # millis() beim Start des aktuellen Intervall-Zyklus (0 = inaktiv)
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+
+  - id: rv_auto_pump_on          # true = Pumpe gerade im EIN-Abschnitt des Intervalls
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  # ── Drehe-Presets ─────────────────────────────────────────
+  - id: drp1_rpm
+    type: int
+    restore_value: yes
+    initial_value: '20'
+  - id: drp1_acc
+    type: int
+    restore_value: yes
+    initial_value: '50'
+  - id: drp1_richtung
+    type: int
+    restore_value: yes
+    initial_value: '1'
+  - id: drp1_mode
+    type: int
+    restore_value: yes
+    initial_value: '4'
+  - id: drp1_pumpe
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+
+  - id: drp2_rpm
+    type: int
+    restore_value: yes
+    initial_value: '50'
+  - id: drp2_acc
+    type: int
+    restore_value: yes
+    initial_value: '100'
+  - id: drp2_richtung
+    type: int
+    restore_value: yes
+    initial_value: '1'
+  - id: drp2_mode
+    type: int
+    restore_value: yes
+    initial_value: '4'
+  - id: drp2_pumpe
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+
+  - id: drp3_rpm
+    type: int
+    restore_value: yes
+    initial_value: '80'
+  - id: drp3_acc
+    type: int
+    restore_value: yes
+    initial_value: '140'
+  - id: drp3_richtung
+    type: int
+    restore_value: yes
+    initial_value: '1'
+  - id: drp3_mode
+    type: int
+    restore_value: yes
+    initial_value: '4'
+  - id: drp3_pumpe
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+
+  - id: drp4_rpm
+    type: int
+    restore_value: yes
+    initial_value: '120'
+  - id: drp4_acc
+    type: int
+    restore_value: yes
+    initial_value: '180'
+  - id: drp4_richtung
+    type: int
+    restore_value: yes
+    initial_value: '-1'
+  - id: drp4_mode
+    type: int
+    restore_value: yes
+    initial_value: '4'
+  - id: drp4_pumpe
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+
+  - id: drp5_rpm
+    type: int
+    restore_value: yes
+    initial_value: '150'
+  - id: drp5_acc
+    type: int
+    restore_value: yes
+    initial_value: '220'
+  - id: drp5_richtung
+    type: int
+    restore_value: yes
+    initial_value: '1'
+  - id: drp5_mode
+    type: int
+    restore_value: yes
+    initial_value: '5'        # FOC
+  - id: drp5_pumpe
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+
+# ============================================================
+# Scripts
+# ============================================================
+script:
+  # ── Schwenker-Overlay öffnen (Arcs + Labels + Trapez sync) ──
+  - id: script_schwenker_settings_open
+    mode: restart
+    then:
+      - lambda: |-
+          lv_arc_set_value(id(arc_schwenkzeit), (int)(id(sw_halbperiode_ms) / 100));
+          lv_arc_set_value(id(arc_rpm), id(sw_max_speed_rpm));
+          lv_arc_set_value(id(arc_acc), id(sw_acc));
+          int z = lv_arc_get_value(id(arc_schwenkzeit));
+          int r = lv_arc_get_value(id(arc_rpm));
+          int a = lv_arc_get_value(id(arc_acc));
+          id(sw_halbperiode_ms) = (uint32_t)(z * 100);
+          id(sw_max_speed_rpm)  = r;
+          id(sw_acc)            = a;
+          char b1[8]; snprintf(b1,sizeof(b1),"%.1fs", z / 10.0f);
+          lv_label_set_text(id(lbl_arc_zeit_val), b1);
+          char b2[6]; snprintf(b2,sizeof(b2),"%d", r);
+          lv_label_set_text(id(lbl_arc_rpm_val), b2);
+          char b3[6]; snprintf(b3,sizeof(b3),"%d%%", a);
+          lv_label_set_text(id(lbl_arc_acc_val), b3);
+          // lbl_trapez_shape entfernt (war Sinus-Visualisierung, obsolet nach 128-Sub/F6-Umstellung)
+          // Tab auf gespeicherten Modus setzen (0=Schwenken, 1=Drehen)
+          lv_tabview_set_act(id(tabview_schwenker), id(dr_modus) ? 1 : 0, LV_ANIM_OFF);
+      - lvgl.widget.show: overlay_schwenker_settings
+
+  # ── Starten ──────────────────────────────────────────────
+  - id: script_schwenker_start
+    mode: single              # mehrfaches Aufrufen ignoriert
+    then:
+      # Motor-Init: Closed Loop, 128 Subdivisions (identisch zu Drehen), gespeicherter Strom, Idle min
+      - lambda: |-
+          if (id(sw_aktiv)) {
+            ESP_LOGI("schwenker", "START ignoriert – laeuft bereits");
+            return;
+          }
+          // ── Drehen sofort hard-stoppen falls es noch läuft ────────────────
+          // (Guard: btn_schwenker_overlay_toggle prüft dr_aktiv nicht)
+          if (id(dr_aktiv)) {
+            id(dr_aktiv)         = false;
+            id(dr_current_rpm)   = 0;
+            id(dr_last_sent_rpm) = -1;
+            uint8_t _acc_b = 0x01;
+            int _dr_dir = (id(dr_richtung) > 0) ? 1 : 0;
+            id(can_bus)->send_data(${motor_can_id}, false,
+                gen_data_can_motor_set_speed(${motor_can_id}, _dr_dir, 0, _acc_b));
+            if (id(pumpe_vor_drehen_level) >= 0.0f) {
+              id(output_pumpe_dacA).set_level(id(pumpe_vor_drehen_level));
+              id(pumpe_vor_drehen_level) = -1.0f;
+            }
+            lv_obj_set_style_bg_color(id(btn_dr_start_stop), lv_color_hex(0x666666), 0);
+            ESP_LOGW("schwenker", "Drehen war aktiv – hard stop vor Schwenker-Start");
+          }
+          id(sw_motor_busy) = true;
+          std::vector<unsigned char> data;
+          data = add_crc(${motor_can_id}, { 0x82, 0x04 });         // MODE: Closed Loop (4)
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+          ESP_LOGI("schwenker", "Motor-Modus: Closed Loop (4)");
+          data = add_crc(${motor_can_id}, { 0x84, 0xFF });        // MSTEP: 256 Sub → F6: speed_raw = rpm × 16
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+          int cur_ma = std::max(500, std::min(2000, id(sw_work_current_mA)));
+          uint8_t cur_h = (uint8_t)(cur_ma >> 8);
+          uint8_t cur_l = (uint8_t)(cur_ma & 0xFF);
+          data = add_crc(${motor_can_id}, { 0x83, cur_h, cur_l });  // Work current aus NVS
+          ESP_LOGI("schwenker", "Motor-Init: Work current = %d mA", cur_ma);
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+          data = add_crc(${motor_can_id}, { 0x9B, 0x00 });        // Idle current: param 0 = min (~10%)
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+      - delay: 150ms   # init settle
+      - lambda: |-
+          // NVS-Schutz: nur Höchstwert prüfen (> 3000 RPM wäre Blödsinn)
+          if (id(sw_max_speed_rpm) < 1) id(sw_max_speed_rpm) = 1;
+          if (id(sw_halbperiode_ms) < 1000 || id(sw_halbperiode_ms) > 10000) {
+            id(sw_halbperiode_ms) = std::max((uint32_t)1000, std::min((uint32_t)10000, id(sw_halbperiode_ms)));
+            lv_arc_set_value(id(arc_schwenkzeit), (int)(id(sw_halbperiode_ms) / 100));
+            char buf[8]; snprintf(buf, sizeof(buf), "%.1fs", id(sw_halbperiode_ms) / 1000.0f);
+            lv_label_set_text(id(lbl_arc_zeit_val), buf);
+            ESP_LOGW("schwenker", "sw_halbperiode_ms korrigiert auf %u", id(sw_halbperiode_ms));
+          }
+
+          // sw_richtung NICHT resetten → wechselt bei jedem Neustart die Seite
+          // (beim Stop wird sw_richtung negiert, nächster Start = Gegenrichtung)
+          id(sw_phase_ms)     = 0;
+          id(sw_stop_pending) = false;  // goto_slot kann dieses Flag hinterlassen → explizit löschen
+          id(sw_braking)      = false;
+          id(sw_pos_prev)     = -1;
+          ESP_LOGI("schwenker", "START  halbperiode=%u ms  max=%d RPM",
+                   id(sw_halbperiode_ms), id(sw_max_speed_rpm));
+          id(sw_aktiv)     = true;
+          id(dr_modus)     = false;   // Modus auf Schwenken speichern (NVS)
+          lv_label_set_text(id(lbl_motor_icon), "\xef\x80\xa1");  // U+F021 arrows-rotate (Schwenken)
+          lv_obj_set_style_bg_color(id(btn_motor_main), lv_color_hex(0x229933), 0);
+          lv_obj_set_style_bg_color(id(btn_schwenker_overlay_toggle), lv_color_hex(0x229933), 0);
+          // Auto-Stop: Flag setzen wenn mindestens ein Slot läuft
+          id(sw_auto_stop_armed) = false;
+          for (int _s = 0; _s < 6; _s++) {
+            if (id(slot_status)[_s] == 1) {
+              id(sw_auto_stop_armed) = true;
+              id(sw_auto_stop_slot)  = _s;
+              ESP_LOGI("schwenker", "Auto-Stop armed: erster aktiver Slot=%d", _s + 1);
+              break;
+            }
+          }
+          // Initialer F6-Befehl: einmalig senden – Motor läuft von selbst bis Richtungswechsel
+          int _acc_pct0 = std::max(5, std::min(100, id(sw_acc)));
+          uint8_t _acc0 = (uint8_t)std::max(1, std::min(254, (int)roundf(_acc_pct0 / 100.0f * 254.0f)));
+          int _spd0     = std::max(1, std::min(3000, id(sw_max_speed_rpm) * 16));  // mstep=256 → rpm × (256/16) = rpm × 16
+          int _dir0     = (id(sw_richtung) > 0) ? 1 : 0;
+          id(can_bus)->send_data(${motor_can_id}, false,
+              gen_data_can_motor_set_speed(${motor_can_id}, _dir0, _spd0, _acc0));
+          ESP_LOGI("schwenker", "START F6: dir=%d speed=%d acc=%d (%d%%)",
+                   _dir0, _spd0, (int)_acc0, _acc_pct0);
+
+  # ── Stoppen ───────────────────────────────────────────────
+  - id: script_schwenker_stop
+    mode: single
+    then:
+      - lambda: |-
+          if (!id(sw_aktiv)) {
+            // Schwenker läuft nicht – sofortiger No-op
+            id(sw_motor_busy) = false;
+            id(sw_motor_last_move_ms) = millis();
+            ESP_LOGI("schwenker", "STOP: war bereits inaktiv");
+            return;
+          }
+          // Auto-Stop deaktivieren (manueller Stop)
+          id(sw_auto_stop_armed) = false;
+          // Prüfe ob ein fertiger Slot blinkt → ersten anfahren (goto_slot stoppt intern)
+          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink),
+          };
+          for (int _b = 0; _b < 6; _b++) {
+            if (blink_s[_b]->state) {
+              ESP_LOGI("schwenker", "STOP: Slot %d blinkt, fahre an", _b + 1);
+              id(script_schwenker_goto_slot)->execute(_b + 1);
+              return;
+            }
+          }
+          // Kein blinkender Slot → normaler Stop
+          id(sw_stop_pending) = true;
+          lv_obj_set_style_bg_color(id(btn_motor_main), lv_color_hex(0xAA8800), 0);
+          lv_obj_set_style_bg_color(id(btn_schwenker_overlay_toggle), lv_color_hex(0xAA8800), 0);
+          ESP_LOGI("schwenker", "STOP angefordert – warte auf Zyklusende");
+
+  # ── Schwenker fährt zu einem der 6 Slot-Positionen ───────
+  #   Slot 1 = 0°, Slot 2 = 60°, Slot 3 = 120°,
+  #   Slot 4 = 180°, Slot 5 = 240°, Slot 6 = 300°
+  - id: script_schwenker_goto_slot
+    mode: restart          # neuer Slot-Klick bricht laufende Fahrt ab und startet sofort neu
+    parameters:
+      slot: int
+    then:
+      - lambda: |-
+          id(sw_motor_busy) = true;
+      # ── Drehen stoppen falls es läuft ───────────────────
+      - if:
+          condition:
+            lambda: return id(dr_aktiv);
+          then:
+            - lambda: |-
+                id(dr_aktiv) = false;
+                uint8_t _acc_b = (uint8_t)std::max(1, std::min(254, id(dr_acc)));
+                int _dr_dir = (id(dr_richtung) > 0) ? 1 : 0;
+                id(can_bus)->send_data(${motor_can_id}, false,
+                    gen_data_can_motor_set_speed(${motor_can_id}, _dr_dir, 0, _acc_b));
+                lv_obj_set_style_bg_color(id(btn_dr_start_stop), lv_color_hex(0x666666), 0);
+                lv_obj_set_style_bg_color(id(btn_motor_main), lv_color_hex(0x666666), 0);
+                ESP_LOGI("goto_slot", "Drehen gestoppt fuer Slot-Fahrt");
+            - script.execute: script_motor_get_status
+            - delay: 50ms
+            - while:
+                condition:
+                  lambda: return id(sensor_motor_status).state != 1;
+                then:
+                  - script.execute: script_motor_get_status
+                  - delay: 50ms
+      # ── Schwenker sanft stoppen falls er läuft ───────────
+      - if:
+          condition:
+            lambda: return id(sw_aktiv);
+          then:
+            - lambda: |-
+                id(sw_stop_pending) = true;
+                lv_obj_set_style_bg_color(id(btn_motor_main), lv_color_hex(0xAA8800), 0);
+                lv_obj_set_style_bg_color(id(btn_schwenker_overlay_toggle), lv_color_hex(0xAA8800), 0);
+                ESP_LOGI("schwenker", "goto_slot: Schwenker läuft – warte auf Zyklusende");
+            # Warten bis Interval den Halbzyklus beendet und sw_aktiv=false setzt
+            - wait_until:
+                condition:
+                  lambda: return !id(sw_aktiv);
+                timeout: 10s
+            - delay: 200ms   # kurze Beruhigungspause nach dem Stop
+      # ── Warten bis Motor wirklich stillsteht ─────────────────────────────
+      # Motor bremst bereits (drehen_stop lief, Positionsfahrt aktiv etc.).
+      # Kein extra Bremsbefehl – aktiv pollen bis Status=1. Timeout 10s → Abbruch.
+      - lambda: |-
+          id(sw_motor_last_move_ms) = millis();  // Timeout-Startzeitstempel
+      - script.execute: script_motor_get_status
+      - delay: 50ms
+      - while:
+          condition:
+            lambda: return id(sensor_motor_status).state != 1 && (millis() - id(sw_motor_last_move_ms) < 10000);
+          then:
+            - script.execute: script_motor_get_status
+            - delay: 50ms
+      - if:
+          condition:
+            lambda: return id(sensor_motor_status).state != 1;
+          then:
+            - lambda: |-
+                id(sw_motor_busy) = false;
+                id(sw_motor_last_move_ms) = millis();
+                ESP_LOGW("goto_slot", "Timeout 10s – Motor steht nicht, Slotfahrt abgebrochen");
+                id(script_schwenker_goto_slot).stop();
+      # Closed Loop + 128 Sub + Work current aus NVS laden
+      - lambda: |-
+          id(can_bus)->send_data(${motor_can_id}, false, add_crc(${motor_can_id}, { 0x82, 0x04 }));
+          id(can_bus)->send_data(${motor_can_id}, false, add_crc(${motor_can_id}, { 0x84, 0x80 }));  // MSTEP: 128 Sub → speed_raw = rpm × 8 (mstep/16)
+          ESP_LOGI("schwenker", "goto_slot: Closed Loop + 128 Sub (Positionsfahrt)");
+          id(script_motor_set_work_current_mA)->execute(id(sw_work_current_mA));
+          ESP_LOGI("schwenker", "goto_slot: Work current = %d mA", id(sw_work_current_mA));
+      # Relative Fahrt zur Zielposition
+      - lambda: |-
+          float current_raw = id(sensor_motor_position).state;
+          if (isnan(current_raw)) {
+            ESP_LOGW("schwenker", "goto_slot: sensor_motor_position NaN – Abbruch");
+            return;
+          }
+          float current_deg = current_raw / 16384.0f * 360.0f;
+          float target_deg  = (float)(slot - 1) * 60.0f;  // 1=0°, 2=60° …6=300°
+          float rel         = target_deg - current_deg;
+          // Kürzesten Weg wählen (±180°)
+          while (rel >  180.0f) rel -= 360.0f;
+          while (rel < -180.0f) rel += 360.0f;
+          ESP_LOGI("schwenker", "goto_slot %d  target=%.1f°  aktuell=%.1f°  rel=%.1f°",
+                   slot, target_deg, current_deg, rel);
+          // 12 RPM real, mstep 128 → speed_raw = 12 × 8 = 96; acc 100
+          // WICHTIG: acc muss ≥1 sein – acc=0 oder 255 = kein Ramping → harter Ruck!
+          uint8_t slot_acc = 100;
+          id(script_motor_goto_relative_degree)->execute(96, slot_acc, rel);
+      # 12 RPM: max. Weg 180° ≈ 2.5 s – wartet auf F1-Status=1 (stopped)
+      - wait_until:
+          condition:
+            lambda: return id(sensor_motor_status).state == 1;
+          timeout: 10s
+      - lambda: |-
+          id(sw_motor_busy) = false;
+          id(sw_motor_last_move_ms) = millis();
+          ESP_LOGI("schwenker", "goto_slot fertig – Idle-Timeout aktiv");
+          // RV-Auto-Modus: Intervall-Zyklus starten wenn Pumpe=AUTO und RV eingebaut
+          if (id(global_rv_aktiv) && id(pumpe_a_modus) == 2) {
+            id(rv_auto_phase_ms) = millis();
+            id(rv_auto_pump_on)  = false;
+            id(script_rv_pumpe_start).stop();
+            id(pumpe_a_aktiv) = false;
+            id(output_pumpe_dacA).set_level(0.0f);
+            ESP_LOGI("rv", "goto_slot: Auto-Intervall gestartet (Pause zuerst)");
+          }
+
+  # ── Motor Soft-Reboot (Soll = Ist, manuell aus Einstellungen) ──────────
+  - id: script_motor_reboot
+    mode: single
+    then:
+      - lambda: |-
+          ESP_LOGI("schwenker", "Motor Soft-Reboot (0x41) – Soll=Ist sync");
+          id(can_bus)->send_data(${motor_can_id}, false, add_crc(${motor_can_id}, { 0x41 }));
+      - delay: 2500ms   # Motor braucht ~2 s zum Hochfahren
+      # Re-Init: Closed-Loop, 128 Sub, 1000 mA, Respond ON
+      - lambda: |-
+          std::vector<unsigned char> data;
+          data = add_crc(${motor_can_id}, { 0x82, 0x04 });        // MODE: Closed Loop
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+          data = add_crc(${motor_can_id}, { 0x84, 0xFF });        // MSTEP: 256 Sub → F6: speed_raw = rpm × 16  (Drehen-Start setzt 0x80 = 128 Sub = rpm × 8)
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+          data = add_crc(${motor_can_id}, { 0x83, 0x03, 0xE8 });  // Work current: 1000 mA
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+          data = add_crc(${motor_can_id}, { 0x9B, 0x00 });        // Idle current: min
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+          data = add_crc(${motor_can_id}, { 0x8C, 0x01, 0x01 });  // Respond ON
+          id(can_bus)->send_data(${motor_can_id}, false, data);
+          ESP_LOGI("schwenker", "Motor Re-Init abgeschlossen");
+
+  # ── Turmpumpe (dacA) Modus setzen (0=AUS, 1=MANUELL, 2=AUTO, 3=TURBO) ─
+  # Synonym: script_beckenpumpe_set_modus steuert dacA = Turmpumpe = Beckenfüllung
+  - id: script_beckenpumpe_set_modus
+    mode: restart
+    parameters:
+      modus: int
+    then:
+      - lambda: |-
+          // Farbe + Label aktualisieren
+          uint32_t color;
+          const char* lbl;
+          if (modus == 2) {
+            color = 0x1a7a3a;  // grün = AUTO
+            lbl   = "A";
+          } else if (modus == 1) {
+            color = 0x1a5a8a;  // blau = MANUELL
+            lbl   = "M";
+          } else if (modus == 3) {
+            color = 0xCC7700;  // orange = TURBO
+            lbl   = "T";
+          } else {
+            color = 0x555555;  // grau = AUS
+            lbl   = "";
+          }
+          lv_obj_set_style_bg_color(id(btn_beckenfuellung), lv_color_hex(color), 0);
+          lv_label_set_text(id(lbl_pumpe_modus), lbl);
+          // Labelfarbe: hellblau wenn aktiv, hellgrau wenn AUS
+          lv_obj_set_style_text_color(id(lbl_pumpe_modus),
+            lv_color_hex(modus > 0 ? 0xAADDFF : 0xAAAAAA), 0);
+          if (modus == 3) return;  // TURBO: nur visuell, Pumpenlogik liegt in script_pumpe_a_lang
+          id(pumpe_a_modus) = modus;
+          // Aktion je Modus
+          if (modus == 0) {
+            // AUS: Pumpe stoppen
+            id(script_pumpe_a_kurz).stop();
+            id(script_pumpe_a_lang).stop();
+            id(pumpe_a_aktiv) = false;
+            id(pumpe_a_auto_war_an) = false;
+            id(output_pumpe_dacA).set_level(0.0f);
+            ESP_LOGI("pumpe", "Modus: AUS");
+          } else if (modus == 1) {
+            // MANUELL: einschalten falls noch nicht aktiv
+            id(pumpe_a_auto_war_an) = false;
+            if (!id(pumpe_a_aktiv)) {
+              id(script_pumpe_a_kurz).execute();
+            }
+            ESP_LOGI("pumpe", "Modus: MANUELL");
+          } else {
+            // AUTO: Motor läuft → einschalten; Motor aus → RV-Interval oder aus
+            id(pumpe_a_auto_war_an) = false;
+            bool motor_laeuft = id(sw_aktiv) || id(dr_aktiv);
+            if (motor_laeuft && !id(pumpe_a_aktiv)) {
+              id(script_pumpe_auto_spuelstoss).execute();
+              id(pumpe_a_auto_war_an) = true;
+            } else if (!motor_laeuft) {
+              if (id(global_rv_aktiv)) {
+                // RV: Interval-Zyklus starten: Pause-Phase zuerst
+                id(rv_auto_phase_ms) = millis();
+                id(rv_auto_pump_on)  = false;
+                id(script_rv_pumpe_start).stop();
+                id(pumpe_a_aktiv) = false;
+                id(output_pumpe_dacA).set_level(0.0f);
+                ESP_LOGI("rv", "Auto-Intervall per Modus-2 gestartet: Pause zuerst");
+              } else if (id(pumpe_a_aktiv)) {
+                id(script_pumpe_a_kurz).stop();
+                id(script_pumpe_a_lang).stop();
+                id(pumpe_a_aktiv) = false;
+                id(output_pumpe_dacA).set_level(0.0f);
+              }
+            }
+            ESP_LOGI("pumpe", "Modus: AUTO (motor=%d, rv=%d)", (int)motor_laeuft, (int)id(global_rv_aktiv));
+          }
+
+  # ── AUTO: Spülstoß 100% für 10s, dann Slider-Wert ─────────
+  - id: script_pumpe_auto_spuelstoss
+    mode: restart
+    then:
+      - lambda: |-
+          id(pumpe_a_aktiv) = true;
+          id(output_pumpe_dacA).set_level(1.0f);
+          ESP_LOGI("pumpe", "AUTO: Spülstoß 100%% für 10s");
+      - delay: 10s
+      - lambda: |-
+          if (id(pumpe_a_modus) == 2 && (id(sw_aktiv) || id(dr_aktiv))) {
+            // Initialisierungs-Fix: Slider kann nach Reboot 0 sein → Mindestwert 5%
+            int sv = lv_slider_get_value(id(slider_turmpumpe));
+            if (sv < 5) {
+              sv = 5;
+              lv_slider_set_value(id(slider_turmpumpe), sv, LV_ANIM_OFF);
+            }
+            float level = sv / 100.0f;
+            id(output_pumpe_dacA).set_level(level);
+            ESP_LOGI("pumpe", "AUTO: Spülstoß Ende → Pumpe %.0f%%", level * 100.0f);
+          }
+
+  # ── Beckenfüllung Kurz (25% → 5% Dauer) ──────────────────
+  - id: script_pumpe_a_kurz
+    mode: restart
+    then:
+      - lambda: |-
+          id(pumpe_a_aktiv) = true;
+          id(output_pumpe_dacA).set_level(0.25f);  // 25% Anlauf
+          ESP_LOGI("pumpe", "Beckenfüllung KURZ start");
+      - delay: 300ms
+      - lambda: |-
+          id(output_pumpe_dacA).set_level(0.02f);  // 2% Dauer
+          lv_slider_set_value(id(slider_turmpumpe), 2, LV_ANIM_OFF);
+
+  # ── Beckenfüllung Lang (25% → 15% → 100% → 5% Dauer) ─────
+  - id: script_pumpe_a_lang
+    mode: restart
+    then:
+      - lambda: |-
+          // Modus vor Turbo merken, damit wir nachher zurückkehren
+          id(pumpe_a_modus_vor_turbo) = id(pumpe_a_modus);
+          id(pumpe_a_aktiv) = true;
+          id(output_pumpe_dacA).set_level(0.25f);  // 25% Anlauf
+          id(script_beckenpumpe_set_modus)->execute(3);  // orange = TURBO
+          ESP_LOGI("pumpe", "Beckenfüllung TURBO start (Modus vorher=%d)", id(pumpe_a_modus_vor_turbo));
+      #- delay: 300ms
+      #- lambda: |-
+      #    id(output_pumpe_dacA).set_level(0.02f);  // 15% Zwischenphase
+      - delay: 1s
+      - lambda: |-
+          id(output_pumpe_dacA).set_level(1.0f);   // 100% Spülen
+      - delay: 12000ms
+      - lambda: |-
+          id(output_pumpe_dacA).set_level(0.05f);  // 5% Dauer
+          lv_slider_set_value(id(slider_turmpumpe), 5, LV_ANIM_OFF);
+          // Nach Turbo: zurück zum gespeicherten Modus
+          id(script_beckenpumpe_set_modus)->execute(id(pumpe_a_modus_vor_turbo));
+          ESP_LOGI("pumpe", "TURBO ende, zurück zu Modus %d", id(pumpe_a_modus_vor_turbo));
+
+  # ── Beckenfüllung AUS ────────────────────────────────────
+  # ── RV: Beckenpumpe starten (Slider-Wert, mit 300ms Anlauf-Boost auf ≥20%) ──
+  - id: script_rv_pumpe_start
+    mode: restart
+    then:
+      - lambda: |-
+          id(pumpe_a_aktiv) = true;
+          int sv = lv_slider_get_value(id(slider_turmpumpe));
+          if (sv < 1) sv = 1;
+          id(output_pumpe_dacA).set_level(0.25f);  // 25% Anlauf-Boost
+          ESP_LOGI("rv", "Pumpe start: Boost 25%% fuer 300ms (Ziel: %d%%)", sv);
+      - delay: 300ms
+      - lambda: |-
+          if (!id(pumpe_a_aktiv)) return;
+          int sv = lv_slider_get_value(id(slider_turmpumpe));
+          if (sv < 1) sv = 1;
+          id(output_pumpe_dacA).set_level(sv / 100.0f);
+          ESP_LOGI("rv", "Pumpe: Zielwert %d%%", sv);
+
+  - id: script_pumpe_a_aus
+    mode: restart
+    then:
+      - lambda: |-
+          id(pumpe_a_aktiv) = false;
+          id(pumpe_a_auto_war_an) = false;
+          id(pumpe_a_aktiv) = false;
+          id(rv_auto_phase_ms) = 0;
+          id(rv_auto_pump_on)  = false;
+          id(output_pumpe_dacA).set_level(0.0f);
+          id(script_beckenpumpe_set_modus)->execute(0);
+          ESP_LOGI("pumpe", "Beckenfüllung AUS");
+
+  # ── System EIN ───────────────────────────────────────────
+  - id: script_system_ein
+    mode: single
+    then:
+      - lambda: |-
+          id(system_ein) = true;
+          lv_obj_set_style_bg_color(id(btn_system_power), lv_color_hex(0x229933), 0);
+          auto call = id(climate_thermostat).make_call();
+          call.set_mode("cool");
+          // Zieltemperatur auf gespeicherten Wert setzen (verhindert -1°C Artefakt)
+          float _t = id(thermostat_ziel_x10) / 10.0f;
+          if (_t < -10.0f || _t > 30.0f) _t = 8.0f;  // Plausibilitäts-Guard
+          call.set_target_temperature(_t);
+          call.perform();
+          // Pumpe auf AUTO setzen
+          id(script_beckenpumpe_set_modus)->execute(2);
+          ESP_LOGI("system", "EIN: Thermostat COOL %.1f°C", _t);
+
+  # ── System AUS ───────────────────────────────────────────
+  - id: script_system_aus
+    mode: restart             # Notaus: zweiter Druck unterbricht und startet sofort erneut
+    then:
+      - lambda: |-
+          id(system_ein) = false;
+          lv_obj_set_style_bg_color(id(btn_system_power), lv_color_hex(0xAA2200), 0);
+          id(script_schwenker_stop).execute();
+          {
+            auto call = id(climate_thermostat).make_call();
+            call.set_mode("off");
+            // Zieltemperatur auf gespeicherten Wert rücksetzen (verhindert -1°C Dauerbetrieb beim nächsten EIN)
+            float _t = id(thermostat_ziel_x10) / 10.0f;
+            if (_t < -10.0f || _t > 30.0f) _t = 8.0f;
+            call.set_target_temperature(_t);
+            call.perform();
+          }
+          id(output_pumpe_dacA).turn_off();
+          id(pumpe_a_aktiv) = false;
+          id(pumpe_a_auto_war_an) = false;
+          id(script_beckenpumpe_set_modus)->execute(0);
+          if (id(dr_aktiv)) id(script_drehen_stop).execute();
+          id(output_pumpe_dacB).turn_off();
+          ESP_LOGI("system", "AUS: Thermostat OFF, Ziel=%.1f°C gesichert",
+                   id(thermostat_ziel_x10) / 10.0f);
+
+  # ── Drehen: Einstellungs-Overlay syncen ──────────────────
+  - id: script_drehen_settings_open
+    mode: restart
+    then:
+      - lambda: |-
+          int rpm = std::max(1, std::min(150, id(dr_speed_rpm)));
+          int acc = std::max(1, std::min(254, id(dr_acc)));
+          lv_arc_set_value(id(arc_dr_rpm), rpm);
+          lv_arc_set_value(id(arc_dr_acc), acc);
+          char b1[8]; snprintf(b1, sizeof(b1), "%d", rpm);
+          lv_label_set_text(id(lbl_dr_rpm_val), b1);
+          char b2[8]; snprintf(b2, sizeof(b2), "%d", acc);
+          lv_label_set_text(id(lbl_dr_acc_val), b2);
+          // Rampzeit anzeigen: speed_val × (256-acc) × 50µs
+          float rt = (float)(rpm * 8) * (256 - acc) * 0.00005f;
+          char b3[10]; snprintf(b3, sizeof(b3), "%.1fs", rt);
+          lv_label_set_text(id(lbl_dr_ramp_info), b3);
+          if (id(dr_richtung) > 0) {
+            lv_label_set_text(id(lbl_dr_richtung), "Rechts \xef\x81\x8b");
+            lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a6b4a), 0);
+          } else {
+            lv_label_set_text(id(lbl_dr_richtung), "Links \xef\x81\x8b");
+            lv_obj_set_style_bg_color(id(btn_dr_richtung), lv_color_hex(0x1a4a6b), 0);
+          }
+          if (id(dr_motor_mode) == 4) {
+            lv_label_set_text(id(lbl_dr_mode), "Closed Loop");
+            lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x553388), 0);
+          } else {
+            lv_label_set_text(id(lbl_dr_mode), "FOC");
+            lv_obj_set_style_bg_color(id(btn_dr_mode), lv_color_hex(0x336688), 0);
+          }
+          lv_obj_set_style_bg_color(id(btn_dr_start_stop),
+            id(dr_aktiv) ? lv_color_hex(0x229933) : lv_color_hex(0x666666), 0);
+          // Pumpen-Auto-Button synchronisieren
+          if (id(dr_pumpe_auto)) {
+            lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe 100%");
+            lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x1a5a8a), 0);
+          } else {
+            lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe: manuell");
+            lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x555555), 0);
+          }
+
+  # ── Drehen starten ────────────────────────────────────────
+  - id: script_drehen_start
+    mode: single
+    then:
+      - lambda: |-
+          if (id(dr_aktiv)) {
+            ESP_LOGI("drehen", "START ignoriert – laeuft bereits");
+            return;
+          }
+          // ── Schwenker sofort hard-stoppen falls er noch läuft ─────────────
+          // (Bug-Guard: btn_dr_start_stop im Overlay prüft sw_aktiv nicht)
+          if (id(sw_aktiv)) {
+            id(sw_aktiv)       = false;
+            id(sw_stop_pending)= false;
+            // F6 speed=0: Motor bremst per sw_acc-Byte aus (128 Sub, F6-Motorbetrieb)
+            uint8_t _sacc = (uint8_t)std::max(1, std::min(254,
+                (int)roundf(id(sw_acc) / 100.0f * 254.0f)));
+            int _sdir = (id(sw_richtung) > 0) ? 1 : 0;
+            id(can_bus)->send_data(${motor_can_id}, false,
+                gen_data_can_motor_set_speed(${motor_can_id}, _sdir, 0, _sacc));
+            lv_obj_set_style_bg_color(id(btn_schwenker_overlay_toggle), lv_color_hex(0x666666), 0);
+            ESP_LOGW("drehen", "Schwenker war aktiv – hard stop (F6 speed=0) vor Drehen-Start");
+          }
+          id(sw_motor_busy) = true;
+          uint8_t mode_byte = (id(dr_motor_mode) == 5) ? 0x05 : 0x04;
+          id(can_bus)->send_data(${motor_can_id}, false,
+              add_crc(${motor_can_id}, { 0x82, mode_byte }));
+          ESP_LOGI("drehen", "Motor-Modus: %d", (int)mode_byte);
+          id(can_bus)->send_data(${motor_can_id}, false,
+              add_crc(${motor_can_id}, { 0x84, 0x80 }));  // MSTEP: 128 Sub → F6: speed_raw = rpm × 8
+          int cur_ma = std::max(500, std::min(2000, id(sw_work_current_mA)));
+          uint8_t cur_h = (uint8_t)(cur_ma >> 8);
+          uint8_t cur_l = (uint8_t)(cur_ma & 0xFF);
+          id(can_bus)->send_data(${motor_can_id}, false,
+              add_crc(${motor_can_id}, { 0x83, cur_h, cur_l }));
+          id(can_bus)->send_data(${motor_can_id}, false,
+              add_crc(${motor_can_id}, { 0x9B, 0x00 }));
+          ESP_LOGI("drehen", "Strom: %d mA", cur_ma);
+      - delay: 150ms
+      - lambda: |-
+          // mstep=128 → F6: speed_raw = rpm × (128/16) = rpm × 8
+          // acc 1–254: Motor-Hardware-Rampe; 0/255 = kein Ramping!
+          id(dr_speed_rpm) = std::max(1, std::min(150, id(dr_speed_rpm)));
+          id(dr_acc)       = std::max(1, std::min(254, id(dr_acc)));
+          int speed_val    = id(dr_speed_rpm) * 8;           // mstep=128 → rpm × 8
+          uint8_t acc_b    = (uint8_t)id(dr_acc);
+          int dr_dir       = (id(dr_richtung) > 0) ? 1 : 0;
+          id(can_bus)->send_data(${motor_can_id}, false,
+              gen_data_can_motor_set_speed(${motor_can_id}, dr_dir, speed_val, acc_b));
+          id(dr_aktiv)  = true;
+          id(dr_modus)  = true;   // Modus auf Drehen speichern (NVS)
+          lv_label_set_text(id(lbl_motor_icon), "\xef\x8b\xb9");  // U+F2F9 rotate-right (Drehen)
+          // Pumpe: RV=true → kein Turbo, normal dauerhaft ein; RV=false → 100% wenn dr_pumpe_auto + aktiv
+          if (id(global_rv_aktiv)) {
+            id(rv_auto_phase_ms) = 0;    // Interval-Zyklus stoppen
+            id(rv_auto_pump_on)  = false;
+            id(pumpe_vor_drehen_level) = -1.0f;  // kein Restore beim Stop nötig
+            // Falls Pumpe via Interval gerade aus war: wieder einschalten
+            if (id(pumpe_a_modus) == 2) {
+              id(script_rv_pumpe_start)->execute();
+              ESP_LOGI("drehen", "RV: Pumpe normal ein (Boost+Slider)");
+            }
+          } else if (id(dr_pumpe_auto) && id(pumpe_a_aktiv)) {
+            id(pumpe_vor_drehen_level) = lv_slider_get_value(id(slider_turmpumpe)) / 100.0f;
+            id(output_pumpe_dacA).set_level(1.0f);
+            ESP_LOGI("drehen", "Pumpe → 100%% (war %.2f)", id(pumpe_vor_drehen_level));
+          } else {
+            id(pumpe_vor_drehen_level) = -1.0f;
+          }
+          lv_obj_set_style_bg_color(id(btn_dr_start_stop), lv_color_hex(0x229933), 0);
+          lv_obj_set_style_bg_color(id(btn_motor_main), lv_color_hex(0x229933), 0);
+          // Auto-Stop: Flag setzen wenn mindestens ein Slot läuft
+          id(dr_auto_stop_armed) = false;
+          for (int _s = 0; _s < 6; _s++) {
+            if (id(slot_status)[_s] == 1) {
+              id(dr_auto_stop_armed) = true;
+              ESP_LOGI("drehen", "Auto-Stop armed: erster aktiver Slot=%d", _s + 1);
+              break;
+            }
+          }
+          float ramp_s = (float)(id(dr_speed_rpm) * 8) * (256 - id(dr_acc)) * 0.00005f;
+          ESP_LOGI("drehen", "START  %d UPM (F6=%d)  acc=%d  ramp=%.1fs  dir=%+d  mode=%d",
+                   id(dr_speed_rpm), speed_val, id(dr_acc), ramp_s, id(dr_richtung), id(dr_motor_mode));
+
+  # ── Drehen stoppen ────────────────────────────────────────
+  - id: script_drehen_stop
+    mode: single
+    then:
+      - lambda: |-
+          if (!id(dr_aktiv)) {
+            id(sw_motor_busy) = false;
+            id(sw_motor_last_move_ms) = millis();
+            ESP_LOGI("drehen", "STOP: war bereits inaktiv");
+            return;
+          }
+          id(dr_aktiv)       = false;
+          id(dr_auto_stop_armed) = false;
+          id(dr_current_rpm) = 0;
+          id(dr_last_sent_rpm) = -1;
+          // Pumpe zurück auf gespeicherten Level
+          if (id(pumpe_vor_drehen_level) >= 0.0f) {
+            id(output_pumpe_dacA).set_level(id(pumpe_vor_drehen_level));
+            lv_slider_set_value(id(slider_turmpumpe), (int)(id(pumpe_vor_drehen_level)*100.0f+0.5f), LV_ANIM_OFF);
+            ESP_LOGI("drehen", "Pumpe zurück: %.2f", id(pumpe_vor_drehen_level));
+            id(pumpe_vor_drehen_level) = -1.0f;
+          }
+          // Stop: speed=0, gleicher acc wie beim Start → symmetrische Hardware-Bremse
+          uint8_t acc_b = (uint8_t)std::max(1, std::min(254, id(dr_acc)));
+          int dr_dir = (id(dr_richtung) > 0) ? 1 : 0;
+          id(can_bus)->send_data(${motor_can_id}, false,
+              gen_data_can_motor_set_speed(${motor_can_id}, dr_dir, 0, acc_b));
+          lv_obj_set_style_bg_color(id(btn_dr_start_stop), lv_color_hex(0x666666), 0);
+          lv_obj_set_style_bg_color(id(btn_motor_main), lv_color_hex(0x666666), 0);
+          id(sw_motor_busy) = false;
+          id(sw_motor_last_move_ms) = millis();
+          ESP_LOGI("drehen", "STOP: Bremsbefehl gesendet");
+          // RV-Auto-Modus: Interval-Zyklus starten wenn Modus=AUTO
+          if (id(global_rv_aktiv) && id(pumpe_a_modus) == 2) {
+            id(rv_auto_phase_ms) = millis();
+            id(rv_auto_pump_on)  = false;
+            // Pause-Phase zuerst: Pumpe jetzt aus
+            id(script_rv_pumpe_start).stop();
+            id(pumpe_a_aktiv) = false;
+            id(output_pumpe_dacA).set_level(0.0f);
+            ESP_LOGI("rv", "Auto-Intervall gestartet: Pause zuerst (Drehen gestoppt)");
+          }
+          // Prüfe blinkende Slots -> Slot anfahren wie beim Schwenken
+          esphome::binary_sensor::BinarySensor* blink_s[6] = {
+            id(bin_slot1_blink), id(bin_slot2_blink), id(bin_slot3_blink),
+            id(bin_slot4_blink), id(bin_slot5_blink), id(bin_slot6_blink),
+          };
+          for (int _b = 0; _b < 6; _b++) {
+            if (blink_s[_b]->state) {
+              ESP_LOGI("drehen", "STOP: Slot %d blinkt, fahre an", _b+1);
+              id(script_schwenker_goto_slot)->execute(_b+1);
+              return;
+            }
+          }
+
+# ============================================================
+# Interval-Blöcke
+#   10 ms – Motorposition (0x30)  → 100 Hz → LED-Ring immer frisch
+#  200 ms – Echtzeit-RPM (0x32)   →   5 Hz → Strobo-Effekt
+#   50 ms – Sinus-Regelschleife   → 20 Hz
+# ============================================================
+interval:
+  # ── Motorposition: 100 Hz – unabhängig vom 50ms-Regelzyklus ─────────────────
+  - interval: 10ms
+    then:
+      - lambda: |-
+          id(can_bus)->send_data(${motor_can_id}, false, add_crc(${motor_can_id}, { 0x30 }));
+
+  # ── Echtzeit-RPM: 5 Hz – für Strobo-LED-Effekt ──────────────────────────────
+  - interval: 200ms
+    then:
+      - lambda: |-
+          id(can_bus)->send_data(${motor_can_id}, false, add_crc(${motor_can_id}, { 0x32 }));
+
+  # ── Schwenker-Regelzyklus: 20 Hz ───────────────────────────────────────────
+  - interval: 50ms
+    then:
+      - lambda: |-
+          // ── Motor-Idle-Timeout: 10 s nach letzter Bewegung → FOC + 100 mA ──────
+          if (!id(sw_aktiv) && !id(dr_aktiv) && !id(sw_motor_busy)) {
+            if (id(sw_motor_last_move_ms) != 0 &&
+                (millis() - id(sw_motor_last_move_ms) > 10000)) {
+              id(sw_motor_last_move_ms) = 0;
+              id(can_bus)->send_data(${motor_can_id}, false,
+                  add_crc(${motor_can_id}, { 0x82, 0x05 }));
+              id(script_motor_set_work_current_mA)->execute(100);
+              id(script_motor_set_idle_current_perc)->execute(10);
+              ESP_LOGI("motor", "Idle-Timeout: FOC + 100 mA Arbeitsstrom + 10%% Idle-Strom (≈10 mA)");
+            }
+          }
+
+          // ── Pumpe AUTO-Modus: Pumpe mit Motor an/aus ──────────────────────────
+          if (id(pumpe_a_modus) == 2) {
+            bool motor_laeuft = id(sw_aktiv) || id(dr_aktiv);
+            if (motor_laeuft && !id(pumpe_a_aktiv) && !id(pumpe_a_auto_war_an)) {
+              id(pumpe_a_auto_war_an) = true;
+              id(script_pumpe_auto_spuelstoss).execute();
+              ESP_LOGI("pumpe", "AUTO: Motor EIN → Pumpe EIN (Spülstoß 10s)");
+            } else if (!motor_laeuft && id(pumpe_a_auto_war_an) && id(pumpe_a_aktiv)) {
+              id(pumpe_a_auto_war_an) = false;
+              id(script_pumpe_auto_spuelstoss).stop();
+              id(script_pumpe_a_kurz).stop();
+              id(script_pumpe_a_lang).stop();
+              id(pumpe_a_aktiv) = false;
+              id(output_pumpe_dacA).set_level(0.0f);
+              ESP_LOGI("pumpe", "AUTO: Motor AUS → Pumpe AUS");
+            }
+          }
+
+          // ── Drehmodus: F6 in script_drehen_start gesendet – hier nichts tun ─────
+          if (id(dr_aktiv)) {
+            return;
+          }
+
+          if (!id(sw_aktiv)) return;
+
+          // ══ Motorbetrieb F6, 256 Sub (0xFF): Motor regelt Rampe intern via acc-Byte ══
+          // sw_acc = 5–100 % Beschleunigung; 100% = acc_byte 254 (schnellste nutzb. Rampe, nie 255!)
+          // 5% = acc_byte ~13 (sanfteste Rampe) | Formel: round(pct/100 * 254)
+          // 256 Sub → F6-speed = echte UPM × 16 | Winkelwert (0–16383) ist encoder-absolut, MSTEP-unabhängig
+          int _acc_pct = std::max(5, std::min(100, id(sw_acc)));
+          uint8_t acc  = (uint8_t)std::max(1, std::min(254, (int)roundf(_acc_pct / 100.0f * 254.0f)));
+          int speed    = std::max(1, std::min(3000, id(sw_max_speed_rpm) * 16));  // mstep=256 → rpm × (256/16) = rpm × 16
+
+          // Bremszeit-Schätzung: ramp_ms = speed_raw × (256 − acc) × 0,05 ms  (identische Formel wie Drehen)
+          // Stopp-Befehl wird ramp_ms früher gesendet → Richtungswechsel trifft auf sw_halbperiode_ms
+          uint32_t _ramp_ms = (uint32_t)(speed * (256 - (int)acc) * 0.05f + 0.5f);
+          uint32_t _fire_ms = (id(sw_halbperiode_ms) > _ramp_ms) ? (id(sw_halbperiode_ms) - _ramp_ms) : 0;
+
+          // ── Brems-Phase: warte bis Motor nach Richtungswechsel-Stop stillsteht ──────
+          // Firmware-Einschränkung: F6-Richtungswechsel ohne Stop = abrupter Ruck → daher stoppen,
+          // auf Stillstand warten (Winkel-Delta < 5 von 16384 ≈ 0,1°), dann neue Richtung starten
+          // sw_phase_ms wird erst hier auf 0 gesetzt → eingestellte Zeit = Fahrt bis echter Richtungswechsel
+          if (id(sw_braking)) {
+            int _cur  = (int)id(sensor_motor_position).state;
+            int _prev = id(sw_pos_prev);
+            if (_prev < 0) {
+              id(sw_pos_prev) = _cur;  // Erstwert
+              return;
+            }
+            int _delta = abs(_cur - _prev);
+            if (_delta > 8192) _delta = 16384 - _delta;  // Wrap 0°/360°
+            if (_delta < 5) {
+              // Motor steht → neue Richtung starten; Phase-Zähler auf 0 (= Beginn nächste Halbperiode)
+              id(sw_braking)  = false;
+              id(sw_pos_prev) = -1;
+              id(sw_phase_ms) = 0;
+              int _dir = (id(sw_richtung) > 0) ? 1 : 0;
+              id(can_bus)->send_data(${motor_can_id}, false,
+                  gen_data_can_motor_set_speed(${motor_can_id}, _dir, speed, acc));
+              ESP_LOGI("schwenker", "Flip done: dir=%+d F6=%d acc=%d (%d%%) ramp_war=%u ms",
+                       id(sw_richtung), speed, (int)acc, _acc_pct, _ramp_ms);
+            } else {
+              id(sw_pos_prev) = _cur;  // Snapshot für nächsten Check
+            }
+            return;  // sw_phase_ms pausiert während Bremsphase
+          }
+
+          id(sw_phase_ms) += 50;
+
+          // ── Flip-Trigger: _fire_ms vor Halbperiode → Stopp-Befehl so früh, dass
+          //    Richtungswechsel nach ~ramp_ms Bremszeit auf sw_halbperiode_ms trifft ──
+          if (id(sw_phase_ms) >= _fire_ms) {
+            if (id(sw_stop_pending)) {
+              // Sanfter Stop: F6 speed=0 → Motor bremst per acc-Byte
+              id(sw_stop_pending) = false;
+              id(sw_aktiv) = false;
+              int _dir = (id(sw_richtung) > 0) ? 1 : 0;
+              id(can_bus)->send_data(${motor_can_id}, false,
+                  gen_data_can_motor_set_speed(${motor_can_id}, _dir, 0, acc));
+              lv_obj_set_style_bg_color(id(btn_motor_main), lv_color_hex(0x666666), 0);
+              lv_obj_set_style_bg_color(id(btn_schwenker_overlay_toggle), lv_color_hex(0x666666), 0);
+              id(sw_motor_busy) = false;
+              id(sw_motor_last_move_ms) = millis();
+              id(sw_richtung) = -(id(sw_richtung));
+              ESP_LOGI("schwenker", "STOP: F6 speed=0 acc=%d (%d%%), nächste Richtung=%+d",
+                       (int)acc, _acc_pct, id(sw_richtung));
+              return;
+            }
+            // Richtungswechsel: Stopp-Befehl senden (phase läuft noch bis Stillstand, dann Reset auf 0)
+            int _old_dir = (id(sw_richtung) > 0) ? 1 : 0;
+            id(can_bus)->send_data(${motor_can_id}, false,
+                gen_data_can_motor_set_speed(${motor_can_id}, _old_dir, 0, acc));
+            id(sw_richtung) = -(id(sw_richtung));
+            id(sw_braking)  = true;
+            id(sw_pos_prev) = (int)id(sensor_motor_position).state;
+            ESP_LOGI("schwenker", "Flip: Bremse alt-dir=%d, ramp~%u ms, warte Stillstand → dann %+d",
+                     _old_dir, _ramp_ms, id(sw_richtung));
+          }
+          // sw_phase_ms läuft; Motor fährt in aktueller Richtung bis _fire_ms
+
+  # ── RV-Automodus: Beckenpumpe Intervall-Zyklus (nur wenn RV=true, Modus=AUTO, Motor aus) ────
+  - interval: 500ms
+    then:
+      - lambda: |-
+          // Nur aktiv wenn: RV eingebaut, Pumpe-Modus=AUTO, kein Motor läuft
+          if (!id(global_rv_aktiv) || id(pumpe_a_modus) != 2 || id(dr_aktiv) || id(sw_aktiv)) {
+            // Motor läuft jetzt: Interval-Flag zurücksetzen (Pumpe läuft normal weiter)
+            if (id(rv_auto_phase_ms) != 0 && (id(dr_aktiv) || id(sw_aktiv))) {
+              id(rv_auto_phase_ms) = 0;
+              id(rv_auto_pump_on)  = false;
+            }
+            return;
+          }
+          if (id(rv_auto_phase_ms) == 0) return;  // Zyklus wurde noch nicht gestartet
+
+          const uint32_t CYCLE_ms = (uint32_t)(${c_rv_auto_interval_s}) * 1000U;
+          const uint32_t ON_ms    = CYCLE_ms * (uint32_t)(${c_rv_auto_duty_pct}) / 100U;
+          const uint32_t OFF_ms   = CYCLE_ms - ON_ms;  // Pause zuerst
+
+          uint32_t elapsed = millis() - id(rv_auto_phase_ms);
+          if (elapsed >= CYCLE_ms) {
+            // Neuer Zyklus: Pause-Phase beginnt, Pumpe aus
+            id(rv_auto_phase_ms) = millis();
+            if (id(rv_auto_pump_on)) {
+              id(rv_auto_pump_on) = false;
+              id(pumpe_a_aktiv)   = false;
+              id(script_rv_pumpe_start).stop();
+              id(output_pumpe_dacA).set_level(0.0f);
+              ESP_LOGI("rv", "Zyklus neu: Pumpe AUS (Pause %ums)", OFF_ms);
+            }
+            return;
+          }
+          if (!id(rv_auto_pump_on) && elapsed >= OFF_ms) {
+            // Pause vorbei: EIN-Phase startet
+            id(rv_auto_pump_on) = true;
+            id(script_rv_pumpe_start)->execute();
+            ESP_LOGI("rv", "Zyklus: Pumpe EIN (%ums)", ON_ms);
+          }
+
+# ============================================================
+# Button – Start / Stop Toggle
+# ============================================================
+button:
+  - platform: template
+    name: "Motor Start/Stop"
+    id: btn_motor_toggle
+    on_press:
+      - lambda: |-
+          if (id(dr_aktiv)) {
+            id(script_drehen_stop).execute();
+          } else if (id(sw_aktiv)) {
+            id(script_schwenker_stop).execute();
+          } else if (id(dr_modus)) {
+            id(script_drehen_start).execute();
+          } else {
+            id(script_schwenker_start).execute();
+          }
+
+  - platform: template
+    name: "System EIN"
+    id: btn_web_system_ein
+    on_press:
+      - script.execute: script_system_ein
+
+  - platform: template
+    name: "System AUS (Not-Aus)"
+    id: btn_web_system_aus
+    on_press:
+      - script.execute: script_system_aus
+
+

@@ -1,0 +1,361 @@
+# ── Komponenten ──────────────────────────────────────────────────────────────────
+#  substitutions:  c_led_strip_outer_led_num, c_led_strip_outer_led_0deg,
+#                  c_led_strip_leds_per_slot, c_led_strip_outer_direction
+#  light:          light_slots_outer
+#
+#  sensor (extern, definiert in lvgl_basis.yaml):
+#    sensor_leds_per_slot  → Slot-Breite zur Laufzeit (1 … led_num/6)
+#  sensor (extern, definiert in motorcontrol_can-bus.yaml):
+#    sensor_motor_rt_speed → Echtzeit-Drehzahl via CAN 0x32, 5 Hz (für Strobo-Effekt)
+#
+#  binary_sensor (extern, definiert in lvgl_basis.yaml):
+#    bin_slot1_blink .. bin_slot6_blink  → Blink-Zustand je Slot (->state: plain bool)
+#
+#  Abhängigkeiten (extern, nicht in dieser Datei):
+#    pin_led_h2           → display_7z_settings.yaml
+#    c_motor_direction    → display_7z_settings.yaml
+#    sensor_motor_position → motorcontrol_can-bus.yaml  (0–16383 = 0–360°)
+# ─────────────────────────────────────────────────────────────────────────────────
+#
+# WS2812-LED-Ring außen um das Becken
+#
+# Anordnung:
+#   c_led_strip_outer_led_0deg  = LED-Index, der physisch auf Motor-0° zeigt
+#                                 (= Slot 1 „Rot" wenn Motor bei 0°)
+#   Die 6 Slot-Farben verteilen sich gleichmäßig alle 60° auf dem Ring.
+#   Wenn der Motor dreht, wandert jede Farb-LED mit.
+#
+# c_led_strip_leds_per_slot:
+#   1 = eine LED exakt auf der Slot-Position
+#   3 = symmetrisch: Slot-LED + je 1 links/rechts (usw., immer ungerade)
+#
+# c_led_strip_outer_direction (logische Drehrichtung, aus Draufsicht):
+#   0 = CW  (LED-Index steigt im Uhrzeigersinn, Draufsicht)
+#   1 = CCW (LED-Index steigt gegen den Uhrzeigersinn, Draufsicht)
+# ACHTUNG: Motor/Display sind aus Draufsicht definiert.
+#          LED-Strip physisch montiert aus Motorwellen-Perspektive → direction=1 kompensiert.
+#
+# c_led_strip_color_mirror (Slot-Farbfolge-Richtung):
+#   0 = Farbfolge gleichsinnig mit motor_deg (Slot 0→1→2 in Richtung steigender motor_deg)
+#   1 = Farbfolge gespiegelt (Slot 0→1→2 gegen Richtung steigender motor_deg)
+#   Faustregel: wenn direction=1, meist color_mirror=1 nötig.
+# ─────────────────────────────────────────────────────────────────────────────────
+
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    chipset: WS2812
+    pin: ${pin_led_h2}
+    num_leds: ${c_led_strip_outer_led_num}
+    rmt_symbols: 96     # ESP32-P4: max 192, kein weiterer Strip → 96
+    use_psram: false
+    use_dma: false
+    name: "Slot LEDs Außen"
+    id: light_slots_outer
+    default_transition_length: 1s
+    restore_mode: RESTORE_DEFAULT_ON
+    effects:
+      - addressable_lambda:
+          name: "Slot Colors"
+          update_interval: 10ms
+          lambda: |-
+            // ── Slot-Farben (Reihenfolge: 1=Rot, 2=Gelb, 3=Grün, 4=Cyan, 5=Blau, 6=Magenta) ──
+            const Color slot_colors[6] = {
+              Color(255,   0,   0),   // Slot 1: Rot
+              Color(255, 255,   0),   // Slot 2: Gelb
+              Color(  0, 255,   0),   // Slot 3: Grün
+              Color(  0, 255, 255),   // Slot 4: Cyan
+              Color(  0,   0, 255),   // Slot 5: Blau
+              Color(255,   0, 255),   // Slot 6: Magenta
+            };
+            const int total   = ${c_led_strip_outer_led_num};
+            const int led0deg = ${c_led_strip_outer_led_0deg};
+            const int dir     = ${c_led_strip_outer_direction};
+
+            float lps_f = id(sensor_leds_per_slot).state;
+            if (isnan(lps_f)) lps_f = ${c_led_strip_leds_per_slot};
+            if (lps_f < 1.0f || lps_f > (float)(total / 6)) lps_f = ${c_led_strip_leds_per_slot};
+            int half = (int)(lps_f / 2.0f);
+
+            float motor_deg = roundf(id(sensor_motor_winkel).state * 10.0f) / 10.0f;
+            if (isnan(motor_deg) || motor_deg < 0.0f) motor_deg = 0.0f;
+            if (${c_motor_direction} == 0) { motor_deg = fmod(360.0f - motor_deg, 360.0f); }
+            for (int i = 0; i < it.size(); i++) { it[i] = Color::BLACK; }
+            // Blink-Status: bin_slot1_blink..bin_slot6_blink (->state ist plain bool, sicher in addressable_lambda)
+            const bool blink_s[6] = {
+              id(bin_slot1_blink)->state, id(bin_slot2_blink)->state,
+              id(bin_slot3_blink)->state, id(bin_slot4_blink)->state,
+              id(bin_slot5_blink)->state, id(bin_slot6_blink)->state,
+            };
+            bool blink_off = (millis() / 500u) % 2u == 0u;
+            for (int s = 0; s < 6; s++) {
+              if (blink_s[s] && blink_off) continue;  // Slot blinkt: in Aus-Phase LEDs dunkel lassen
+              float slot_step = (${c_led_strip_color_mirror} == 0) ? 60.0f : -60.0f;
+              float slot_deg = fmod(motor_deg + s * slot_step, 360.0f);
+              if (slot_deg < 0.0f) slot_deg += 360.0f;
+              float offset = slot_deg * total / 360.0f;
+              int center = (int)(led0deg + (dir == 0 ? offset : -offset) + 0.5f);
+              center = ((center % total) + total) % total;
+              for (int d = -half; d <= half; d++) {
+                int idx = ((center + d) % total + total) % total;
+                it[idx] = slot_colors[s];
+              }
+              Color dim(slot_colors[s].r / 2, slot_colors[s].g / 2, slot_colors[s].b / 2);
+              it[((center - half - 1) % total + total) % total] = dim;
+              it[((center + half + 1) % total + total) % total] = dim;
+            }
+      - addressable_lambda:
+          name: "Slot Colors on White"
+          update_interval: 50ms
+          lambda: |-
+            const Color slot_colors[6] = {
+              Color(255,   0,   0), Color(255, 255,   0), Color(  0, 255,   0),
+              Color(  0, 255, 255), Color(  0,   0, 255), Color(255,   0, 255),
+            };
+            const int total   = ${c_led_strip_outer_led_num};
+            const int led0deg = ${c_led_strip_outer_led_0deg};
+            float lps_f = id(sensor_leds_per_slot).state;
+            if (isnan(lps_f)) lps_f = ${c_led_strip_leds_per_slot};
+            if (lps_f < 1.0f || lps_f > (float)(total / 6)) lps_f = ${c_led_strip_leds_per_slot};
+            int half = (int)(lps_f / 2.0f);
+            const int dir     = ${c_led_strip_outer_direction};
+            float motor_deg = roundf(id(sensor_motor_winkel).state * 10.0f) / 10.0f;
+            if (isnan(motor_deg) || motor_deg < 0.0f) motor_deg = 0.0f;
+            if (${c_motor_direction} == 0) { motor_deg = fmod(360.0f - motor_deg, 360.0f); }
+            Color bg = current_color;
+            for (int i = 0; i < it.size(); i++) { it[i] = bg; }
+            for (int s = 0; s < 6; s++) {
+              float slot_step = (${c_led_strip_color_mirror} == 0) ? 60.0f : -60.0f;
+              float slot_deg = fmod(motor_deg + s * slot_step, 360.0f);
+              if (slot_deg < 0.0f) slot_deg += 360.0f;
+              float offset = slot_deg * total / 360.0f;
+              int center = (int)(led0deg + (dir == 0 ? offset : -offset) + 0.5f);
+              center = ((center % total) + total) % total;
+              for (int d = -half; d <= half; d++) {
+                int idx = ((center + d) % total + total) % total;
+                it[idx] = slot_colors[s];
+              }
+              Color dim(slot_colors[s].r / 2, slot_colors[s].g / 2, slot_colors[s].b / 2);
+              it[((center - half - 1) % total + total) % total] = dim;
+              it[((center + half + 1) % total + total) % total] = dim;
+            }
+      - addressable_lambda:
+          name: "Slot Colors Mix"
+          update_interval: 10ms
+          lambda: |-
+            // Zwei Modi je nach Slot-Breite (sensor_leds_per_slot):
+            //   Volle Breite (lps == total/6): Vollring-Gradient, 3-LED-Überblendzone
+            //   < volle Breite: Spot-Modus mit distanzbasiertem Fade am Rand:
+            //     lps >= 5: Randled-2=33%, Randled-1=66%, Rest=100%
+            //     lps >= 3: Randled=50%, Rest=100%
+            //     lps < 3:  nur Volllicht
+            const Color slot_colors[6] = {
+              Color(255,   0,   0),   // Slot 1: Rot
+              Color(255, 255,   0),   // Slot 2: Gelb
+              Color(  0, 255,   0),   // Slot 3: Grün
+              Color(  0, 255, 255),   // Slot 4: Cyan
+              Color(  0,   0, 255),   // Slot 5: Blau
+              Color(255,   0, 255),   // Slot 6: Magenta
+            };
+            const int total   = ${c_led_strip_outer_led_num};
+            const int led0deg = ${c_led_strip_outer_led_0deg};
+            const int dir     = ${c_led_strip_outer_direction};
+            const int lps_max = total / 6;   // maximale Slot-Breite (172/6=28)
+
+            float lps_f = id(sensor_leds_per_slot).state;
+            if (isnan(lps_f)) lps_f = ${c_led_strip_leds_per_slot};
+            if (lps_f < 1.0f)             lps_f = 1.0f;
+            if (lps_f > (float)lps_max)   lps_f = (float)lps_max;
+            int half = (int)(lps_f / 2.0f);
+
+            float motor_deg = roundf(id(sensor_motor_winkel).state * 10.0f) / 10.0f;
+            if (isnan(motor_deg) || motor_deg < 0.0f) motor_deg = 0.0f;
+            if (${c_motor_direction} == 0) { motor_deg = fmod(360.0f - motor_deg, 360.0f); }
+
+            const bool blink_s[6] = {
+              id(bin_slot1_blink)->state, id(bin_slot2_blink)->state,
+              id(bin_slot3_blink)->state, id(bin_slot4_blink)->state,
+              id(bin_slot5_blink)->state, id(bin_slot6_blink)->state,
+            };
+            bool blink_off = (millis() / 500u) % 2u == 0u;
+
+            for (int i = 0; i < it.size(); i++) { it[i] = Color::BLACK; }
+
+            if (lps_f >= (float)lps_max) {
+              // ── Vollring-Modus: 6 Farben füllen den Ring, 3-LED-Gradient an Grenzen ──
+              const int fade_leds = 3;
+              float motor_offset  = motor_deg / 360.0f * (float)total;
+              float origin        = (float)led0deg + (dir == 0 ? motor_offset : -motor_offset);
+              float seg    = (float)total / 6.0f;
+              float fade_t = (float)fade_leds / seg;
+              // seg/2-Offset: Segment-Mitte auf origin legen (= Spot-Modus Referenz)
+              float origin_ring = origin - seg * 0.5f;
+
+              for (int i = 0; i < it.size(); i++) {
+                float pos = fmod((float)i - origin_ring, (float)total);
+                if (pos < 0.0f) pos += (float)total;
+                // dir==1: Slot-Indizes steigen in abnehmender LED-Richtung → pos umdrehen
+                // damit Vollring dieselbe Farbrichtung hat wie Spot-Modus (Referenz)
+                if (dir == 1) pos = fmod((float)total - pos, (float)total);
+                float frac = pos / seg;
+                if (${c_led_strip_color_mirror} == 1) {
+                  frac = fmod(6.0f - fmod(frac, 6.0f), 6.0f);
+                }
+                int   s0    = (int)frac % 6;
+                float t     = frac - floorf(frac);
+                int   sprev = (s0 + 5) % 6;
+                int   snext = (s0 + 1) % 6;
+                Color c0 = (blink_s[s0]    && blink_off) ? Color::BLACK : slot_colors[s0];
+                Color cp = (blink_s[sprev] && blink_off) ? Color::BLACK : slot_colors[sprev];
+                Color cn = (blink_s[snext] && blink_off) ? Color::BLACK : slot_colors[snext];
+                Color c;
+                if (t < fade_t) {
+                  float blend = t / fade_t;
+                  c = Color(
+                    (uint8_t)((float)cp.r + ((float)c0.r - (float)cp.r) * blend),
+                    (uint8_t)((float)cp.g + ((float)c0.g - (float)cp.g) * blend),
+                    (uint8_t)((float)cp.b + ((float)c0.b - (float)cp.b) * blend)
+                  );
+                } else if (t > 1.0f - fade_t) {
+                  float blend = (t - (1.0f - fade_t)) / fade_t;
+                  c = Color(
+                    (uint8_t)((float)c0.r + ((float)cn.r - (float)c0.r) * blend),
+                    (uint8_t)((float)c0.g + ((float)cn.g - (float)c0.g) * blend),
+                    (uint8_t)((float)c0.b + ((float)cn.b - (float)c0.b) * blend)
+                  );
+                } else {
+                  c = c0;
+                }
+                it[i] = c;
+              }
+            } else {
+              // ── Spot-Modus: Farbpunkte mit distanzbasiertem Rand-Fade ──
+              for (int s = 0; s < 6; s++) {
+                if (blink_s[s] && blink_off) continue;
+                float slot_step = (${c_led_strip_color_mirror} == 0) ? 60.0f : -60.0f;
+                float slot_deg  = fmod(motor_deg + s * slot_step, 360.0f);
+                if (slot_deg < 0.0f) slot_deg += 360.0f;
+                float offset = slot_deg * total / 360.0f;
+                int center = (int)(led0deg + (dir == 0 ? offset : -offset) + 0.5f);
+                center = ((center % total) + total) % total;
+                Color base = slot_colors[s];
+                for (int d = -half; d <= half; d++) {
+                  int dist_edge = half - abs(d);   // 0=äußerste LED, half=Mitte
+                  float br;
+                  if (lps_f >= 5.0f) {
+                    // 2-LED-Fade: 33% / 66% / 100%
+                    if      (dist_edge == 0) br = 0.33f;
+                    else if (dist_edge == 1) br = 0.66f;
+                    else                     br = 1.0f;
+                  } else if (lps_f >= 3.0f) {
+                    // 1-LED-Fade: 50% / 100%
+                    br = (dist_edge == 0) ? 0.5f : 1.0f;
+                  } else {
+                    br = 1.0f;
+                  }
+                  int idx = ((center + d) % total + total) % total;
+                  it[idx] = Color(
+                    (uint8_t)(base.r * br),
+                    (uint8_t)(base.g * br),
+                    (uint8_t)(base.b * br)
+                  );
+                }
+              }
+            }
+      - addressable_lambda:
+          name: "Strobo"
+          update_interval: 10ms
+          lambda: |-
+            // ── Stroboskop-Effekt ─────────────────────────────────────────────────────
+            // Blitzt synchron zur Motorgeschwindigkeit (sensor_motor_rt_speed).
+            // Mit drift_factor % Versatz → langsame Scheinrotation sichtbar.
+            //
+            // Blinklogik: Phasen-Akkumulator + Timestamp-Blitzfenster
+            //   Phase läuft 0.0 → 1.0 pro Blitzperiode
+            //   Bei Phase-Wrap (≥1.0): flash_end_ms = now + flash_ms setzen
+            //   Blitz AN solange now < flash_end_ms
+            //   → 1 Blitz pro Periode, garantiert, auch bei unregelmäßigen Ticks
+            //
+            // Variablen:
+            //   drift_factor : Wie viel % langsamer als exakt-synchron (→ sichtbare Drift)
+            //   n_flashes    : Blitze pro Umdrehung (2 = doppelte Hz → besser bei niedrigen RPM)
+            //   spot_half    : Halbbreite der Slot-Farb-Spots (spot_half*2+1 = LED-Anzahl)
+            //   flash_ms     : Dauer des Weiß-Blitzes in ms
+            //
+            // Mindest-RPM: 90 UPM → 3 Blitze/U × 1.5 rps = ~4.3 Hz
+            //               150 UPM → ~7.1 Hz – lebhaftes Blinken
+            // Unter 90 UPM: Ring komplett dunkel (kein statisches Bild)
+            //
+            const float    drift_factor = 0.05f;   // 5 % → Scheinrotation sichtbar
+            const int      n_flashes    = 3;        // Blitze pro Umdrehung (3 → 4–7 Hz bei 90–150 UPM)
+            const int      spot_half    = 2;        // Spot-Breite = 5 LEDs (anpassbar)
+            const uint32_t flash_ms     = 20;       // Blitzdauer in ms
+
+            const Color slot_colors[6] = {
+              Color(255,   0,   0),   // Slot 1: Rot
+              Color(255, 255,   0),   // Slot 2: Gelb
+              Color(  0, 255,   0),   // Slot 3: Grün
+              Color(  0, 255, 255),   // Slot 4: Cyan
+              Color(  0,   0, 255),   // Slot 5: Blau
+              Color(255,   0, 255),   // Slot 6: Magenta
+            };
+
+            const int total   = ${c_led_strip_outer_led_num};
+            const int led0deg = ${c_led_strip_outer_led_0deg};
+            const int dir     = ${c_led_strip_outer_direction};
+
+            // Echtzeit-Drehzahl via CAN 0x32 (sensor_motor_rt_speed, 5 Hz, thread-safe)
+            // raw = tatsächliche Wellen-RPM (kein Skalierungsfaktor), Betrag bereits im CAN-Handler
+            float rpm = id(sensor_motor_rt_speed).state;
+            if (isnan(rpm) || rpm < 90.0f) {
+              // Unter 90 UPM: Ring komplett dunkel
+              for (int i = 0; i < it.size(); i++) { it[i] = Color::BLACK; }
+              return;
+            }
+            if (rpm > 400.0f) rpm = 400.0f;
+
+            // Blitzfrequenz: n_flashes × (1 - drift_factor) × Rotationsfrequenz
+            // Bei n_flashes=3 und 90 RPM: ~4.3 Hz; bei 150 RPM: ~7.1 Hz
+            float freq_hz = (float)n_flashes * (rpm / 60.0f) * (1.0f - drift_factor);
+            if (freq_hz < 0.1f) freq_hz = 0.1f;
+
+            // Phasen-Akkumulator: Phase läuft 0.0 → 1.0, Wrap = 1 Blitz
+            // Blitz-Zeitfenster via Timestamp → kein Überspringen möglich
+            static float     strobe_phase   = 0.0f;
+            static uint32_t  strobe_last_ms = 0u;
+            static uint32_t  flash_end_ms   = 0u;
+
+            uint32_t now = millis();
+            uint32_t dt  = (strobe_last_ms == 0u) ? 0u : (now - strobe_last_ms);
+            strobe_last_ms = now;
+            if (dt > 500u) dt = 0u;   // Erstaufruf / lange Pause: Phase nicht springen
+
+            strobe_phase += (float)dt * freq_hz / 1000.0f;
+            if (strobe_phase >= 1.0f) {
+              strobe_phase -= floorf(strobe_phase);  // Wrap → neues Blitz-Fenster
+              flash_end_ms = now + flash_ms;
+            }
+            bool flash_on = (now < flash_end_ms);
+
+            // Motor-Position → Slot-Positionen
+            float motor_deg = roundf(id(sensor_motor_winkel).state * 10.0f) / 10.0f;
+            if (isnan(motor_deg) || motor_deg < 0.0f) motor_deg = 0.0f;
+            if (${c_motor_direction} == 0) { motor_deg = fmod(360.0f - motor_deg, 360.0f); }
+
+            // Hintergrund: weiß im Blitz, sonst schwarz
+            Color bg = flash_on ? Color(255, 255, 255) : Color::BLACK;
+            for (int i = 0; i < it.size(); i++) { it[i] = bg; }
+
+            // Slot-Farb-Spots immer sichtbar (feste Breite = spot_half*2+1)
+            for (int s = 0; s < 6; s++) {
+              float slot_step = (${c_led_strip_color_mirror} == 0) ? 60.0f : -60.0f;
+              float slot_deg  = fmod(motor_deg + s * slot_step, 360.0f);
+              if (slot_deg < 0.0f) slot_deg += 360.0f;
+              float offset = slot_deg * total / 360.0f;
+              int center = (int)(led0deg + (dir == 0 ? offset : -offset) + 0.5f);
+              center = ((center % total) + total) % total;
+              for (int d = -spot_half; d <= spot_half; d++) {
+                int idx = ((center + d) % total + total) % total;
+                it[idx] = slot_colors[s];
+              }
+            }
