@@ -231,6 +231,8 @@ sensor:
     state_class: measurement
     one_wire_id: bus_1wire
     update_interval: 5s
+    filters:
+     - filter_out: nan
     # filters:
     #   - median:
     #       window_size: 3

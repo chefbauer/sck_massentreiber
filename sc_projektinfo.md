@@ -98,6 +98,8 @@ Ausgelegt für **Dosen und Flaschen** — durch das Drehen wird die Kühlleistun
 | Betrieb | Standalone (kein Home Assistant nötig) |
 | Zeit-Quelle | SNTP (NTP) — RTC wird später hinzugefügt |
 | Radio-Koprocessor | ESP32-C6 via `esp32_hosted` (SDIO 4-bit, extern definiert) |
+| C6-Pinout | `reset: GPIO54`, `cmd: GPIO19`, `clk: GPIO18`, `d0…d3: GPIO14…17`, `active_high: true` |
+| C6-Firmware | Nur via `update: esp32_hosted`-Entity abrufbar (API/HA) — kein direkter Sensor für LVGL |
 | 1-Wire Bus | DS18B20 nativ an GPIO45 → `one_wire: bus_1wire` → `sensor_temp_becken` in `hardware.yaml` |
 
 ---
