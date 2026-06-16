@@ -34,7 +34,8 @@ substitutions:
   # ── Kühler / Pumpen ──────────────────────────────────────
   fan_kompressor_min_perc:        "25"
   fan_kompressor_max_perc:        "92"
-  c_pumpe_umwaelzung_ein_perc:    "30"
+  c_ruerwerk_ein_perc:            "30"
+  c_ruerwerk_max_perc:            "50"   # PWM-Maximum Rührwerk (Hardware-Limit)
   c_thermostat_deadband:          "0.7"   # °C – Thermostat schaltet EIN bei Zieltemp + Deadband; ICE-Abbruch bei Zieltemp + Deadband
   c_thermostat_overrun:           "0.2"   # °C – Thermostat Overrun (Nachlauf über Solltemp)
   c_icebank_pump_interval_length: "10"   # s  – Gesamt-Intervall des Pumpenpulses

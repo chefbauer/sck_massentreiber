@@ -55,7 +55,7 @@
 
 **Schnellkühlanlage** auf Basis eines Kompressorkühlers.
 
-- Eine **Umwälzpumpe** für die Kühlung des Kühlwassers
+- Eine **Rührwerk (DC-Motor)** für die Kühlung des Kühlwassers
 - Eine **Pumpe** für Vorratsbecken → Überlaufbecken
 - **Überlaufbecken mit Dreher** per Schrittmotor
 
@@ -230,8 +230,10 @@ Aktualisiert auch das AMG8833-Overlay wenn es sichtbar ist.
 | `c_standby_lvgl_idle` | 120s | LVGL-Idle-Timeout für Standby-Flag |
 | `c_standby_tof_min_mm` | "800" | Mindestdistanz für Standby (kein Objekt vor Sensor) |
 | `c_motor_direction` | "1" | Motorrichtung: 0=links/1=rechts auf Welle |
-| `c_rv_auto_interval_s` | "15" | RV-Automodus: Zyklus-Länge in Sekunden (Drehen AUS) |
-| `c_rv_auto_duty_pct` | "15" | RV-Automodus: Einschaltdauer in % (15%×15s = 2,25s EIN) |
+| `c_rv_auto_interval_s` | "30" | RV-Automodus: Zyklus-Länge in Sekunden (Drehen AUS) |
+| `c_rv_auto_duty_pct` | "10" | RV-Automodus: Einschaltdauer in % (10%×30s = 3s EIN) |
+| `c_ruerwerk_ein_perc` | "30" | Rührwerk PWM-% bei Kühlung aktiv |
+| `c_ruerwerk_max_perc` | "50" | Rührwerk PWM-Hardware-Limit (max_power) |
 
 > **⚠️ Montage-Besonderheit (Motor-/Systemrichtung):**
 > Der Motor ist **senkrecht mit Welle nach oben** montiert.
@@ -524,18 +526,17 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Test
 - **`btn_tc_ok`** (grün, BOTTOM_RIGHT): setzt `slot_is_countdown`, `slot_countdown_max_ms`, **startet sofort** (`slot_status=1`), Blink aus, Overlay schließt
 
 ### MCP4728 DAC — Turmpumpe
-- `output_pumpe_dacA`, Kanal A, `vref: vdd`
-- `power_down: normal`, `min_power: 0.2`, `max_power: 1.0`
+- `output_pumpe_dacA`, Kanal A, `vref: internal`, `gain: X2` → 4,096 V Max
+- `power_down: normal`, `min_power: 0.15`, `max_power: 0.855`
 - `zero_means_zero: true` → Slider 0 → exakt 0 V (kein Nachlaufen)
-- Pumpe reagiert linear auf 1–3,5 V; unter 1 V aus
 
 ### Outputs
 | ID | Typ | Pin | Zweck |
 |---|---|---|---|
 | `output_pumpe_dacA` | MCP4728 Kanal A | — | Turmpumpe (0–3,5 V) |
-| `output_luefter_kompressor_pwm` | LEDC 25 kHz | `pin_pwm3` | Kompressor-Lüfter |
-| `output_pumpe_pwm1` | LEDC 80 kHz | `pin_pwm1` | Beckenpumpe |
-| `output_kompressor_relais` | GPIO | `pin_pwm4` | Kompressor Ein/Aus |
+| `output_ruerwerk` | LEDC 25 kHz | `pin_pwm1` (GPIO1) | Rührwerk DC-Motor (PWM via Motorcontroller) |
+| `output_luefter_kompressor_pwm` | LEDC 25 kHz | `pin_pwm4` (GPIO4) | Kompressor-Lüfter (Open-Drain) |
+| `output_kompressor_relais` | GPIO | `pin_pwm3` (GPIO3) | Kompressor Ein/Aus |
 
 ### I²C Devices
 | ID | Adresse | Beschreibung |
@@ -910,3 +911,4 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 | 2026-05-21 (session) | — | `schwenker.yaml`: `script_schwenker_goto_slot` Ende — RV-Auto-Intervall starten wenn `global_rv_aktiv` && `pumpe_a_modus==2` (Turmpumpe nach Timer-Ende nicht mehr dauerhaft an) | `schwenker.yaml` |
 | 2026-05-21 (session) | — | `lvgl_basis.yaml`: Tab „Test" → „Info" (`tab_test` → `tab_info`); Labels `lbl_info_build` (Build-Datum + ESPHome-Version, Compile-Time) und `lbl_info_wifi` (WiFi IP, Laufzeit) | `lvgl_basis.yaml` |
 | 2026-05-21 (session) | — | `hardware.yaml`: `text_sensor: wifi_info → ip_address` (`sensor_wifi_ip`, internal); `on_value` aktualisiert `lbl_info_wifi` | `hardware.yaml` |
+| 2026-06-16 (session) | — | Umwälzpumpe → **Rührwerk (DC-Motor)**: `output_pumpe_dacB` (MCP4728 ch B) entfernt; neuer PWM-Output `output_ruerwerk` (LEDC 25 kHz an `pin_pwm1` GPIO1) mit `c_ruerwerk_max_perc=50`; alle IDs umbenannt (`slider_ruerwerk`, `row_ruerwerk`, `lbl_ruerwerk`); `c_pumpe_umwaelzung_ein_perc` → `c_ruerwerk_ein_perc`; Steuerung `ruehrwerk_steuerung`; DAC ch B bleibt unbelegt | `hardware.yaml`, `schwippschwenker.yaml`, `lvgl_basis.yaml`, `schwenker.yaml`, `cooler.yaml`, `sc_projektinfo.md` |

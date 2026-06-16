@@ -2518,9 +2518,9 @@ lvgl:
                                         id: output_pumpe_dacA
                                         level: !lambda "return x / 100.0;"
 
-                        # Zeile: Umwälzpumpe Label + Slider (wird durch Thermostat gesteuert)
+                        # Zeile: Rührwerk Label + Slider (wird durch Thermostat gesteuert)
                         - obj:
-                            id: row_umwaelzpumpe
+                            id: row_ruerwerk
                             width: 960
                             height: 70
                             align: TOP_MID
@@ -2531,14 +2531,14 @@ lvgl:
                             scrollbar_mode: "off"
                             widgets:
                               - label:
-                                  id: lbl_umwaelzpumpe
-                                  text: "Umwälzpumpe"
+                                  id: lbl_ruerwerk
+                                  text: "Rührwerk"
                                   align: LEFT_MID
                                   x: 10
                                   text_font: font_normal
                                   text_color: 0x000000
                               - slider:
-                                  id: slider_umwaelzpumpe
+                                  id: slider_ruerwerk
                                   width: 650
                                   height: 20
                                   align: RIGHT_MID
@@ -2548,7 +2548,7 @@ lvgl:
                                   value: 0
                                   on_value:
                                     - output.set_level:
-                                        id: output_pumpe_dacB
+                                        id: output_ruerwerk
                                         level: !lambda "return x / 100.0;"
 
                         # Zeile: Motor Reboot (Soll=Ist Sync, bei versehentlich verdrehäm Neustart)

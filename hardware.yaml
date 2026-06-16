@@ -2,7 +2,7 @@
 #  esphome:   on_boot  (init: Lichter, Sliders, LED-Helligkeit, bin_slot*_blink)
 #  time:      sntp_time
 #  mcp4728:   dac_output
-#  output:    output_pumpe_dacA, output_pumpe_dacB,
+#  output:    output_pumpe_dacA, output_ruerwerk,
 #             output_luefter_kompressor_pwm, output_kompressor_relais
 #  i2c:       i2c_amg8833, temp_bridge
 #  globals:   amg_pixel_temps, kompressor_soll_ein
@@ -129,17 +129,14 @@ output:
     max_power: 0.855          # ← das ist der entscheidende Wert
     zero_means_zero: true
 
-  # DAC Umwälzpumpe (Channel B)
-  # Synonym: konsistent als "Umwälzpumpe" benannt → kein weiterer Alias
-  - platform: mcp4728
-    id: output_pumpe_dacB
-    mcp4728_id: dac_output
-    channel: B
-    vref: internal
-    gain: X2                  # → 4,096 V Max
-    power_down: normal
-    min_power: 0.15           # z. B. 20 % → ca. 0,82 V (je nach Kalibrierung)
-    max_power: 0.855          # ← das ist der entscheidende Wert
+  # PWM Rührwerk (DC-Motor via Motorcontroller)
+  # Ersetzt ehemalige Umwälzpumpe auf DACB – jetzt DC-Motor an pin_pwm1
+  - platform: ledc
+    id: output_ruerwerk
+    pin: ${pin_pwm1}
+    frequency: 25000 Hz
+    min_power: 0.0
+    max_power: "${c_ruerwerk_max_perc}%"
     zero_means_zero: true
 
   # PWM Lüftersteuerung (Kompressor-Lüfter)
@@ -416,7 +413,7 @@ climate:
           snprintf(buf, sizeof(buf), "%.0f %%", perc);
           lv_label_set_text(id(lbl_luefter_wert), buf);
       - lambda: |-
-          // Umwälzpumpe-Slider: kein automatischer Reset – Slider bleibt manuell verstellbar
+          // Rührwerk-Slider: kein automatischer Reset – Slider bleibt manuell verstellbar
           // Sync erfolgt nur bei Kompressor-Start (cool_action) und -Stop (idle_action)
 
 binary_sensor:
@@ -574,7 +571,7 @@ interval:
           }
           // State 4: Countdown läuft, Thermostat bleibt auf -1°C
 
-  # ── umwaelzpumpe_steuerung: alle 500 ms ──────────────────────────────────────
+  # ── ruehrwerk_steuerung: alle 500 ms ──────────────────────────────────────
   # Zustände: -1=unbekannt, 0=Aus, 1=Kühlung, 2=ICE-Puls
   # ICE-Puls: ON für c_icebank_pump_ed% eines c_icebank_pump_interval_length-s-Zyklus
   - interval: 500ms
@@ -597,15 +594,15 @@ interval:
             pump_phase_ms = 0;
             pump_ice_on   = false;
             if (neuer_state == 0) {
-              id(output_pumpe_dacB).turn_off();
-              lv_slider_set_value(id(slider_umwaelzpumpe), 0, LV_ANIM_OFF);
-              ESP_LOGI("pumpe", "AUS");
+              id(output_ruerwerk).turn_off();
+              lv_slider_set_value(id(slider_ruerwerk), 0, LV_ANIM_OFF);
+              ESP_LOGI("ruehrwerk", "AUS");
             } else if (neuer_state == 1) {
-              id(output_pumpe_dacB).set_level(${c_pumpe_umwaelzung_ein_perc} / 100.0f);
-              lv_slider_set_value(id(slider_umwaelzpumpe), ${c_pumpe_umwaelzung_ein_perc}, LV_ANIM_OFF);
-              ESP_LOGI("pumpe", "EIN (%d%%)", ${c_pumpe_umwaelzung_ein_perc});
+              id(output_ruerwerk).set_level(${c_ruerwerk_ein_perc} / 100.0f);
+              lv_slider_set_value(id(slider_ruerwerk), ${c_ruerwerk_ein_perc}, LV_ANIM_OFF);
+              ESP_LOGI("ruehrwerk", "EIN (%d%%)", ${c_ruerwerk_ein_perc});
             } else {
-              ESP_LOGI("pumpe", "ICE-Puls-Modus");
+              ESP_LOGI("ruehrwerk", "ICE-Puls-Modus");
             }
           }
 
@@ -618,13 +615,13 @@ interval:
               pump_phase_ms = millis();
               if (!pump_ice_on) {
                 pump_ice_on = true;
-                id(output_pumpe_dacB).set_level(${c_icebank_pump_power} / 100.0f);
-                lv_slider_set_value(id(slider_umwaelzpumpe), ${c_icebank_pump_power}, LV_ANIM_OFF);
+                id(output_ruerwerk).set_level(${c_icebank_pump_power} / 100.0f);
+                lv_slider_set_value(id(slider_ruerwerk), ${c_icebank_pump_power}, LV_ANIM_OFF);
               }
             } else if (elapsed >= ON_ms && pump_ice_on) {
               pump_ice_on = false;
-              id(output_pumpe_dacB).turn_off();
-              lv_slider_set_value(id(slider_umwaelzpumpe), 0, LV_ANIM_OFF);
+              id(output_ruerwerk).turn_off();
+              lv_slider_set_value(id(slider_ruerwerk), 0, LV_ANIM_OFF);
             }
           }
 

@@ -927,7 +927,7 @@ script:
           id(pumpe_a_auto_war_an) = false;
           id(script_beckenpumpe_set_modus)->execute(0);
           if (id(dr_aktiv)) id(script_drehen_stop).execute();
-          id(output_pumpe_dacB).turn_off();
+          id(output_ruerwerk).turn_off();
           ESP_LOGI("system", "AUS: Thermostat OFF, Ziel=%.1f°C gesichert",
                    id(thermostat_ziel_x10) / 10.0f);
 
