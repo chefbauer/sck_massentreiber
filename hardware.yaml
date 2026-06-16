@@ -4,6 +4,8 @@
 #  mcp4728:   dac_output
 #  output:    output_pumpe_dacA, output_ruerwerk,
 #             output_luefter_kompressor_pwm, output_kompressor_relais
+#  switch:    switch_ventil_zulauf
+#  dallas:    bus_1wire
 #  i2c:       i2c_amg8833, temp_bridge
 #  globals:   amg_pixel_temps, kompressor_soll_ein
 #  sensor:    sensor_temp_becken, sensor_amg8833
@@ -158,6 +160,24 @@ output:
     id: output_kompressor_relais
     pin: ${pin_pwm3}
 
+switch:
+  # Ventil Zulauf Beckenpumpe (Motorventil, 50% des Zulaufs)
+  # Zweigeteilter Zulauf: 50% Rückschlagventil (passiv), 50% Motorventil (aktiv via GPIO2)
+  # Öffnet automatisch wenn Beckenpumpe läuft (außer im RV-Intervall)
+  - platform: gpio
+    id: switch_ventil_zulauf
+    pin: ${pin_pwm2}
+    restore_mode: ALWAYS_OFF
+    name: "Ventil Zulauf"
+
+# ── 1-Wire Bus (DS18B20 Beckentemperatur) ────────────────────────────────────
+# Sensor-ID wird nach Hardware-Identifikation nachgetragen.
+# Sobald die ID bekannt ist: sensor_temp_becken von I²C-Bridge-Template
+# auf platform: dallas umstellen.
+dallas:
+  - pin: ${pin_1w}
+    id: bus_1wire
+    update_interval: 3s
 
 i2c_device:
   - id: i2c_amg8833
@@ -622,6 +642,28 @@ interval:
               pump_ice_on = false;
               id(output_ruerwerk).turn_off();
               lv_slider_set_value(id(slider_ruerwerk), 0, LV_ANIM_OFF);
+            }
+          }
+
+  # ── ventil_auto: Ventil folgt Beckenpumpe (außer RV-Intervall) ─────────────
+  # Zulauf zweigeteilt: 50% Rückschlagventil (passiv), 50% Motorventil (aktiv).
+  # Ventil öffnet wenn Turmpumpe läuft; schließt wenn Pumpe aus.
+  # Ausnahme: RV-Intervall (rv_auto_phase_ms != 0) → keine Änderung.
+  - interval: 500ms
+    then:
+      - lambda: |-
+          static bool last_pumpe = false;
+          bool pumpe_ein   = id(pumpe_a_aktiv);
+          bool rv_intervall = (id(rv_auto_phase_ms) != 0);
+
+          if (!rv_intervall && pumpe_ein != last_pumpe) {
+            last_pumpe = pumpe_ein;
+            if (pumpe_ein) {
+              id(switch_ventil_zulauf).turn_on();
+              ESP_LOGI("ventil", "AUF (Pumpe ein)");
+            } else {
+              id(switch_ventil_zulauf).turn_off();
+              ESP_LOGI("ventil", "ZU (Pumpe aus)");
             }
           }
 

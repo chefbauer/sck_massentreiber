@@ -233,7 +233,7 @@ Aktualisiert auch das AMG8833-Overlay wenn es sichtbar ist.
 | `c_rv_auto_interval_s` | "30" | RV-Automodus: Zyklus-Länge in Sekunden (Drehen AUS) |
 | `c_rv_auto_duty_pct` | "10" | RV-Automodus: Einschaltdauer in % (10%×30s = 3s EIN) |
 | `c_ruerwerk_ein_perc` | "30" | Rührwerk PWM-% bei Kühlung aktiv |
-| `c_ruerwerk_max_perc` | "50" | Rührwerk PWM-Hardware-Limit (max_power) |
+| `c_ruerwerk_max_perc` | "60" | Rührwerk PWM-Hardware-Limit (max_power) |
 
 > **⚠️ Montage-Besonderheit (Motor-/Systemrichtung):**
 > Der Motor ist **senkrecht mit Welle nach oben** montiert.
@@ -356,7 +356,7 @@ Anordnung im Uhrzeigersinn nach Farbrad:
 
 ### TabView (4 Tabs, `font_tab`, Hintergrund `#E0E0E0`)
 
-Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Test**
+Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Info**
 
 ---
 
@@ -365,6 +365,10 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Test
   - `btn_amg_live` (dunkelblau `#334466`) → öffnet `overlay_amg8833`
   - `btn_sensorphalanx_live` (grün `#336644`) → öffnet `overlay_sensorphalanx`
   - `btn_temp_messung_live` → öffnet `overlay_temp_messung`
+- `row_ventil_zulauf` (y:110): Label "Ventil Zulauf" + Button `btn_ventil_zulauf` (AUF/ZU, grün/grau) → `switch.toggle: switch_ventil_zulauf`
+- `row_turmpumpe` (y:200): Label "Turmpumpe" + Slider `slider_turmpumpe` (0–100) → `output_pumpe_dacA`
+- `row_ruerwerk` (y:290): Label "Rührwerk" + Slider `slider_ruerwerk` (0–100) → `output_ruerwerk`
+- `row_motor_reboot` (y:380): Button "Motor Reboot" → `script_motor_reboot`
 
 ---
 
@@ -408,11 +412,9 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Test
 
 ---
 
-**Tab "Test":**
-- Zeile: Label "Turmpumpe" + Slider `slider_turmpumpe` (0–100)
-  - `on_value` → `output.set_level: output_pumpe_dacA`
-- Zeile: Label "Beckenpumpe" + Slider `slider_beckenpumpe` (0–100)
-  - `on_value` → `output.set_level: output_pumpe_pwm1`
+**Tab "Info":**
+- `lbl_info_build`: Build-Datum + ESPHome-Version (Compile-Time)
+- `lbl_info_wifi`: WiFi IP-Adresse (Laufzeit, via `sensor_wifi_ip`)
 
 ---
 
@@ -538,6 +540,24 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Test
 | `output_luefter_kompressor_pwm` | LEDC 25 kHz | `pin_pwm4` (GPIO4) | Kompressor-Lüfter (Open-Drain) |
 | `output_kompressor_relais` | GPIO | `pin_pwm3` (GPIO3) | Kompressor Ein/Aus |
 
+### Switches
+| ID | Typ | Pin | Zweck |
+|---|---|---|---|
+| `switch_ventil_zulauf` | GPIO | `pin_pwm2` (GPIO2) | Ventil Zulauf Beckenpumpe (Motorventil) |
+
+> **Zulauf Beckenpumpe zweigeteilt:** 50% Rückschlagventil (passiv), 50% Motorventil (aktiv via `switch_ventil_zulauf`).
+> Ventil öffnet automatisch wenn Turmpumpe läuft, schließt wenn Pumpe aus.
+> Ausnahme: RV-Intervallbetrieb — Ventil bleibt unverändert.
+> Manuelle Bedienung im Tab System möglich.
+
+### 1-Wire Bus
+| ID | Pin | Zweck |
+|---|---|---|
+| `bus_1wire` | `pin_1w` (GPIO45) | DS18B20 Beckentemperatur (ersetzt I²C-Bridge) |
+
+> **Achtung:** `sensor_temp_becken` läuft aktuell noch über I²C-Bridge `temp_bridge` (0x48).
+> Sobald die DS18B20-Sensor-ID bekannt ist, wird auf natives `platform: dallas` umgestellt.
+
 ### I²C Devices
 | ID | Adresse | Beschreibung |
 |---|---|---|
@@ -607,12 +627,12 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 - [x] Statusleiste mit Kompressor-Icon (dynamische Farbe)
 - [x] `lbl_standby_icon` (Mond U+F186, `font_icons`, blau-grau) in Statusleiste — sichtbar bei `bin_standby`
 - [x] Einstellungen: Tab-Reihenfolge System · **Schwenker** · **Licht** · Bildschirm · Kühler · Test
-- [x] Tab System: Overlay-Buttons (AMG8833 Live, Sensor-Phalanx, IR-Temp-Messung)
+- [x] Tab System: Overlay-Buttons + Ventil Zulauf + Turmpumpe + Rührwerk + Motor Reboot
 - [x] Tab Schwenker: "Motor freigeben" (Mode 3) + "Motor 0° setzen" (script_motor_set_zero) + Motorstrom-Slider + Overlay-Button
 - [x] Tab Licht: `slider_slot_breite` (1–28 LEDs) → `global_leds_per_slot`
 - [x] Tab Bildschirm: Helligkeit-Slider + Farbtest-Quadrate
 - [x] Tab Kühler: Kühlung-Switch + Temperatur-Slider + Preset-Buttons
-- [x] Tab Test: Turmpumpe-Slider + Beckenpumpe-Slider
+- [x] Tab Info: Build-Datum + WiFi-IP (war Tab Test)
 - [x] Overlay AMG8833 Live (8×8 Grid, Exit-Button)
 - [x] Overlay Sensor-Phalanx (7 Sensoren, Badge-Design)
 - [x] Overlay `overlay_temp_messung`: TOF-Bar, FOV-Kreis, Temperaturanzeige (Komma-Format), Emissivitäts-Slider, Material/Farb-Auswahl
@@ -853,8 +873,8 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 - [x] Helligkeit-Slider → `light_screen_background`
 - [x] Farbtest-Quadrate in Einstellungen
 - [ ] Tank-Platzhalter durch echtes PNG ersetzen
-- [ ] Einstellungen Tab "System" füllen
-- [ ] Einstellungen Tab "Kühler" füllen
+- [x] Einstellungen Tab "System" füllen
+- [x] Einstellungen Tab "Kühler" füllen
 - [x] `sensor_temp_becken` via DS18B20 I²C-Bridge (`1w_i2c_bridge`, ESP-IDF 5.x) aktiv
 
 ---
@@ -911,4 +931,6 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 | 2026-05-21 (session) | — | `schwenker.yaml`: `script_schwenker_goto_slot` Ende — RV-Auto-Intervall starten wenn `global_rv_aktiv` && `pumpe_a_modus==2` (Turmpumpe nach Timer-Ende nicht mehr dauerhaft an) | `schwenker.yaml` |
 | 2026-05-21 (session) | — | `lvgl_basis.yaml`: Tab „Test" → „Info" (`tab_test` → `tab_info`); Labels `lbl_info_build` (Build-Datum + ESPHome-Version, Compile-Time) und `lbl_info_wifi` (WiFi IP, Laufzeit) | `lvgl_basis.yaml` |
 | 2026-05-21 (session) | — | `hardware.yaml`: `text_sensor: wifi_info → ip_address` (`sensor_wifi_ip`, internal); `on_value` aktualisiert `lbl_info_wifi` | `hardware.yaml` |
-| 2026-06-16 (session) | — | Umwälzpumpe → **Rührwerk (DC-Motor)**: `output_pumpe_dacB` (MCP4728 ch B) entfernt; neuer PWM-Output `output_ruerwerk` (LEDC 25 kHz an `pin_pwm1` GPIO1) mit `c_ruerwerk_max_perc=50`; alle IDs umbenannt (`slider_ruerwerk`, `row_ruerwerk`, `lbl_ruerwerk`); `c_pumpe_umwaelzung_ein_perc` → `c_ruerwerk_ein_perc`; Steuerung `ruehrwerk_steuerung`; DAC ch B bleibt unbelegt | `hardware.yaml`, `schwippschwenker.yaml`, `lvgl_basis.yaml`, `schwenker.yaml`, `cooler.yaml`, `sc_projektinfo.md` |
+| 2026-06-16 (session) | — | Umwälzpumpe → **Rührwerk (DC-Motor)**: `output_pumpe_dacB` (MCP4728 ch B) entfernt; neuer PWM-Output `output_ruerwerk` (LEDC 25 kHz an `pin_pwm1` GPIO1) mit `c_ruerwerk_max_perc=60`; alle IDs umbenannt (`slider_ruerwerk`, `row_ruerwerk`, `lbl_ruerwerk`); `c_pumpe_umwaelzung_ein_perc` → `c_ruerwerk_ein_perc`; Steuerung `ruehrwerk_steuerung`; DAC ch B bleibt unbelegt | `hardware.yaml`, `schwippschwenker.yaml`, `lvgl_basis.yaml`, `schwenker.yaml`, `cooler.yaml`, `sc_projektinfo.md` |
+| 2026-06-16 (session) | — | **Ventil Zulauf**: `switch_ventil_zulauf` (GPIO an `pin_pwm2` GPIO2); Auto-Logik `ventil_auto` (500ms): folgt `pumpe_a_aktiv`, außer bei RV-Intervall (`rv_auto_phase_ms != 0`); manueller Button `btn_ventil_zulauf` (AUF/ZU) in Tab System (y:110); Zulauf zweigeteilt 50% Rückschlagventil + 50% Motorventil | `hardware.yaml`, `lvgl_basis.yaml`, `sc_projektinfo.md` |
+| 2026-06-16 (session) | — | **1-Wire Bus** `bus_1wire` auf `pin_1w` (GPIO45) angelegt (`dallas:`); `update_interval: 3s`; DS18B20-Sensor-ID folgt – `sensor_temp_becken` läuft weiter über I²C-Bridge bis zur Umstellung | `hardware.yaml`, `sc_projektinfo.md` |
