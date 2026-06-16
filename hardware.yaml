@@ -5,7 +5,7 @@
 #  output:    output_pumpe_dacA, output_ruerwerk,
 #             output_luefter_kompressor_pwm, output_kompressor_relais
 #  switch:    switch_ventil_zulauf
-#  dallas:    bus_1wire
+#  one_wire:  bus_1wire
 #  i2c:       i2c_amg8833, temp_bridge
 #  globals:   amg_pixel_temps, kompressor_soll_ein
 #  sensor:    sensor_temp_becken, sensor_amg8833
@@ -173,8 +173,8 @@ switch:
 # ── 1-Wire Bus (DS18B20 Beckentemperatur) ────────────────────────────────────
 # Sensor-ID wird nach Hardware-Identifikation nachgetragen.
 # Sobald die ID bekannt ist: sensor_temp_becken von I²C-Bridge-Template
-# auf platform: dallas umstellen.
-dallas:
+# auf platform: dallas_temp umstellen.
+one_wire:
   - pin: ${pin_1w}
     id: bus_1wire
     update_interval: 3s
