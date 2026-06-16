@@ -175,9 +175,9 @@ switch:
 # Sobald die ID bekannt ist: sensor_temp_becken von I²C-Bridge-Template
 # auf platform: dallas_temp umstellen.
 one_wire:
-  - pin: ${pin_1w}
+  - platform: gpio
+    pin: ${pin_1w}
     id: bus_1wire
-    update_interval: 3s
 
 i2c_device:
   - id: i2c_amg8833
