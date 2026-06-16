@@ -8,10 +8,11 @@
 #  one_wire:  bus_1wire
 #  i2c:       i2c_amg8833
 #  globals:   amg_pixel_temps, kompressor_soll_ein
-#  sensor:    sensor_temp_becken (dallas_temp, 0x6800000fba16c428), sensor_amg8833
+#  sensor:    sensor_temp_becken (dallas_temp, 0x6800000fba16c428), sensor_amg8833,
+#             sensor_wifi_rssi (wifi_signal)
 #  climate:   climate_thermostat
 #  script:    script_kompressor_delayed_start
-#  text_sensor: sensor_wifi_ip, sensor_wifi_scan
+#  text_sensor: sensor_wifi_ip, sensor_wifi_ssid, sensor_wifi_scan_raw, sensor_wifi_scan
 # ─────────────────────────────────────────────────────────────────────────────────
 
 esphome:
@@ -230,11 +231,11 @@ sensor:
     state_class: measurement
     one_wire_id: bus_1wire
     update_interval: 5s
-    filters:
-      - median:
-          window_size: 3
-          send_every: 1
-          send_first_at: 1
+    # filters:
+    #   - median:
+    #       window_size: 3
+    #       send_every: 1
+    #       send_first_at: 1
     on_value:
       - lvgl.widget.refresh: lbl_temp_becken
       - script.execute: script_kuehl_update
@@ -335,6 +336,12 @@ sensor:
       ESP_LOGD("amg", "Mittelwert (inneres 4×4, ε=%.2f): %.2f °C   (Ambient: %.1f °C, %d Pixel)",
                EMISSIVITY, avg, ambient, inner_count);
       return avg;
+
+  # WiFi-Signalstärke (RSSI) für Info-Tab
+  - platform: wifi_signal
+    id: sensor_wifi_rssi
+    name: "WiFi RSSI"
+    internal: true
 
 climate:
   - platform: thermostat
@@ -664,36 +671,35 @@ interval:
           }
 
   # ── wifi_scan: alle 30s verfügbare Netze aktualisieren ───────────────────
+  # Kombiniert verbundenes Netz + Scan-Ergebnisse in einen String.
   - interval: 30s
     then:
       - lambda: |-
-          int n = WiFi.scanComplete();
-          if (n >= 0) {
-            // Verbundenes Netz zuerst
-            std::string result;
-            char hdr[80];
-            snprintf(hdr, sizeof(hdr), "verbunden:  %s  %d dBm\n",
-                     WiFi.SSID().c_str(), WiFi.RSSI());
-            result += hdr;
-            // Scan-Ergebnisse (nur starke, max. 9 weitere)
-            int shown = 0;
-            for (int i = 0; i < n && shown < 9; i++) {
-              if (WiFi.SSID(i) == WiFi.SSID()) continue;  // verbundenes Netz nicht doppeln
-              if (WiFi.RSSI(i) > -80) {
-                char buf[72];
-                snprintf(buf, sizeof(buf), "            %-20s %d dBm\n",
-                         WiFi.SSID(i).c_str(), WiFi.RSSI(i));
-                result += buf;
-                shown++;
+          std::string result;
+          // Verbundenes Netz zuerst
+          char hdr[80];
+          snprintf(hdr, sizeof(hdr), "verbunden:  %s  %d dBm\n",
+                   id(sensor_wifi_ssid).state.c_str(),
+                   (int)(id(sensor_wifi_rssi).state + 0.5f));
+          result += hdr;
+          // Scan-Ergebnisse anhängen
+          std::string scan = id(sensor_wifi_scan_raw).state;
+          if (scan.empty() || scan == "(keine Netze)") {
+            result += "(keine weiteren Netze)\n";
+          } else {
+            // Einrücken für einheitliches Layout
+            size_t pos = 0;
+            while (pos < scan.length()) {
+              size_t nl = scan.find('\n', pos);
+              std::string line = scan.substr(pos, (nl == std::string::npos) ? std::string::npos : (nl - pos));
+              if (!line.empty()) {
+                result += "            " + line + "\n";
               }
+              if (nl == std::string::npos) break;
+              pos = nl + 1;
             }
-            WiFi.scanDelete();
-            if (shown == 0) result += "(keine weiteren starken Netze)\n";
-            id(sensor_wifi_scan).publish_state(result);
-          } else if (n == -2) {
-            // Noch nie gescannt: async Scan starten
-            WiFi.scanNetworks(true);
           }
+          id(sensor_wifi_scan).publish_state(result);
 
 text_sensor:
   - platform: wifi_info
@@ -704,8 +710,18 @@ text_sensor:
       on_value:
         - lambda: |-
             lv_label_set_text_fmt(id(lbl_info_wifi), "WiFi IP:  %s", x.c_str());
+  - platform: wifi_info
+    ssid:
+      id: sensor_wifi_ssid
+      name: "WiFi SSID"
+      internal: true
+  - platform: wifi_info
+    scan_results:
+      id: sensor_wifi_scan_raw
+      name: "WiFi Scan"
+      internal: true
 
-  # WiFi-Scan: Liste verfügbarer Netze (starke Signale)
+  # WiFi-Scan: kombiniertes Ergebnis (verbunden + Scan) fürs UI
   - platform: template
     id: sensor_wifi_scan
     internal: true
