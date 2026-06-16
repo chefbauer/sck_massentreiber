@@ -107,7 +107,7 @@ Ausgelegt für **Dosen und Flaschen** — durch das Drehen wird die Kühlleistun
 **Sensor:** DS18B20 nativ via 1‑Wire (`one_wire: bus_1wire`, `pin_1w` GPIO45)
 
 **Sensor-ID:** `0x6800000fba16c428`  
-**ESPHome-ID:** `sensor_temp_becken` (`platform: dallas_temp`, `one_wire_id: bus_1wire`, `update_interval: 1s`, `accuracy_decimals: 2`)  
+**ESPHome-ID:** `sensor_temp_becken` (`platform: dallas_temp`, `one_wire_id: bus_1wire`, `update_interval: 5s`, `accuracy_decimals: 1`)  
 **Gleitender Mittelwert:** ESPHome-Filter `median` (window=3, send_every=1) bei `update_interval: 1s` → jede Sekunde ein Wert
 
 **Hardware:** DS18B20 direkt an GPIO45 mit 4,7 kΩ Pull-Up an 3,3 V (kein externer ESP32-C3 mehr nötig)
@@ -317,7 +317,7 @@ Anordnung im Uhrzeigersinn nach Farbrad:
 - `status_bar` unten, 1024×60 px (60 px Höhe), `#F0F0F0`
 - **Links:** Uhrzeitanzeige `lbl_status_clock` (`font_clock`, `#333333`) — zeigt `HH:MM:SS` aus SNTP
 - **Mitte:** Schneeflocken-Icon (`lbl_kompressor_icon`): grau = aus, blau = kühlt aktiv
-- **Mitte-Rechts:** Becken-Temperatur (`lbl_temp_becken`, `font_default_40px`, Farbe `#003366`), x+80 vom Center, Beispiel: `12.34°C` (2 Dezimalstellen, abgeschnitten, Wert = `becken_temp_avg`)
+- **Mitte-Rechts:** Becken-Temperatur (`lbl_temp_becken`, `font_default_40px`, Farbe `#003366`), x+80 vom Center, Beispiel: `12.3°C` (1 Dezimalstelle)
 - **Rechts (vor Zahnrad):** `lbl_standby_icon` — Mond-Icon (U+F186, `font_icons`, `#8899BB` blau-grau, x=-72, `hidden: true`) — sichtbar wenn `bin_standby` aktiv
 - **Rechts:** Button `btn_to_settings` (60×54 px, dunkelgrau `#444444`) mit Zahnrad-Icon (`\uF013`) → `lvgl.page.show: page_settings`
 - Farbe des Schneeflocken-Icons wird via `climate.on_state` Lambda gesetzt
@@ -911,3 +911,5 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 | 2026-06-16 (session) | — | **1-Wire Bus** `bus_1wire` auf `pin_1w` (GPIO45) angelegt (`one_wire: platform: gpio`); DS18B20 nativ eingebunden (`0x6800000fba16c428`, `dallas_temp`, `accuracy_decimals: 2`, 1s); I²C-Bridge `temp_bridge` (0x48) + Template-Sensor entfernt | `hardware.yaml`, `sc_projektinfo.md` |
 | 2026-06-16 (session) | — | **System-AUS-Guard**: alle 4 pumpenrelevanten Intervalle (`thermostat_steuerung`, `ruehrwerk_steuerung`, `ventil_auto`, `RV-Automodus`) prüfen `if (!id(system_ein)) return;` — keine Pumpenaktivität bei System AUS; `script_beckenpumpe_set_modus(0)` resettet jetzt auch `rv_auto_phase_ms` | `hardware.yaml`, `schwenker.yaml` |
 | 2026-06-16 (session) | — | **App-Titel** umbenannt: „SCK Schwippschwenker" → „SCK Massentreiber"; `font_title`-Glyphs um `M`, `b` ergänzt | `lvgl_basis.yaml`, `schwippschwenker.yaml`, `sc_projektinfo.md` |
+| 2026-06-16 (session) | — | **DS18B20‑Update‑Intervall** 1s→10s wegen Bildschirmflackern (GPIO‑Bit‑Banging stört MIPI‑DSI) | `hardware.yaml` |
+| 2026-06-16 (session) | — | **WiFi‑Scan in Tab Info**: `sensor_wifi_scan` + `interval: 30s` mit async Scan; Scrollbox `lbl_wifi_netze` (960×260) zeigt alle Netze > −80 dBm; alle Info‑Labels schwarz statt grau | `hardware.yaml`, `lvgl_basis.yaml` |

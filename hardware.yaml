@@ -11,7 +11,7 @@
 #  sensor:    sensor_temp_becken (dallas_temp, 0x6800000fba16c428), sensor_amg8833
 #  climate:   climate_thermostat
 #  script:    script_kompressor_delayed_start
-#  text_sensor: sensor_wifi_ip
+#  text_sensor: sensor_wifi_ip, sensor_wifi_scan
 # ─────────────────────────────────────────────────────────────────────────────────
 
 esphome:
@@ -224,12 +224,12 @@ sensor:
     id: sensor_temp_becken
     name: "Temperatur Becken"
     address: 0x6800000fba16c428
-    accuracy_decimals: 2
+    accuracy_decimals: 1
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
     one_wire_id: bus_1wire
-    update_interval: 10s
+    update_interval: 5s
     filters:
       - median:
           window_size: 3
@@ -663,6 +663,38 @@ interval:
             }
           }
 
+  # ── wifi_scan: alle 30s verfügbare Netze aktualisieren ───────────────────
+  - interval: 30s
+    then:
+      - lambda: |-
+          int n = WiFi.scanComplete();
+          if (n >= 0) {
+            // Verbundenes Netz zuerst
+            std::string result;
+            char hdr[80];
+            snprintf(hdr, sizeof(hdr), "verbunden:  %s  %d dBm\n",
+                     WiFi.SSID().c_str(), WiFi.RSSI());
+            result += hdr;
+            // Scan-Ergebnisse (nur starke, max. 9 weitere)
+            int shown = 0;
+            for (int i = 0; i < n && shown < 9; i++) {
+              if (WiFi.SSID(i) == WiFi.SSID()) continue;  // verbundenes Netz nicht doppeln
+              if (WiFi.RSSI(i) > -80) {
+                char buf[72];
+                snprintf(buf, sizeof(buf), "            %-20s %d dBm\n",
+                         WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+                result += buf;
+                shown++;
+              }
+            }
+            WiFi.scanDelete();
+            if (shown == 0) result += "(keine weiteren starken Netze)\n";
+            id(sensor_wifi_scan).publish_state(result);
+          } else if (n == -2) {
+            // Noch nie gescannt: async Scan starten
+            WiFi.scanNetworks(true);
+          }
+
 text_sensor:
   - platform: wifi_info
     ip_address:
@@ -672,3 +704,13 @@ text_sensor:
       on_value:
         - lambda: |-
             lv_label_set_text_fmt(id(lbl_info_wifi), "WiFi IP:  %s", x.c_str());
+
+  # WiFi-Scan: Liste verfügbarer Netze (starke Signale)
+  - platform: template
+    id: sensor_wifi_scan
+    internal: true
+    lambda: return "";  # updated by interval
+    on_value:
+      - lvgl.label.update:
+          id: lbl_wifi_netze
+          text: !lambda "return x;"
