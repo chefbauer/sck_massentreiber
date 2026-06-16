@@ -648,28 +648,23 @@ interval:
             }
           }
 
-  # ── ventil_auto: Ventil folgt Beckenpumpe (außer RV-Intervall) ─────────────
+  # ── ventil_auto: Ventil folgt Beckenpumpe ─────────────────────────────────
   # Zulauf zweigeteilt: 50% Rückschlagventil (passiv), 50% Motorventil (aktiv).
-  # Ventil öffnet wenn Turmpumpe läuft; schließt wenn Pumpe aus.
-  # Ausnahme: RV-Intervall (rv_auto_phase_ms != 0) → keine Änderung.
+  # Schließen immer wenn Pumpe aus; Öffnen nur außerhalb des RV-Intervalls.
   - interval: 500ms
     then:
       - lambda: |-
           if (!id(system_ein)) return;  // System AUS → nichts tun
 
-          bool rv_intervall = (id(rv_auto_phase_ms) != 0);
-          if (rv_intervall) return;  // RV-Intervall: Ventil unverändert lassen
-
           bool soll_auf = id(pumpe_a_aktiv);
           bool ist_auf  = id(switch_ventil_zulauf).state;
-          if (soll_auf != ist_auf) {
-            if (soll_auf) {
-              id(switch_ventil_zulauf).turn_on();
-              ESP_LOGI("ventil", "AUF (Pumpe ein)");
-            } else {
-              id(switch_ventil_zulauf).turn_off();
-              ESP_LOGI("ventil", "ZU (Pumpe aus)");
-            }
+
+          if (soll_auf && !ist_auf && id(rv_auto_phase_ms) == 0) {
+            // Nur öffnen wenn Pumpe ein UND nicht im RV-Intervall
+            id(switch_ventil_zulauf).turn_on();
+          } else if (!soll_auf && ist_auf) {
+            // Immer schließen wenn Pumpe aus (auch im RV-Intervall)
+            id(switch_ventil_zulauf).turn_off();
           }
 
   # ── wifi_scan: alle 30s verfügbare Netze aktualisieren ───────────────────

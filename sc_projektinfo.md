@@ -526,8 +526,8 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Info
 | `switch_ventil_zulauf` | GPIO | `pin_pwm2` (GPIO2) | Ventil Zulauf Beckenpumpe (Motorventil) |
 
 > **Zulauf Beckenpumpe zweigeteilt:** 50% Rückschlagventil (passiv), 50% Motorventil (aktiv via `switch_ventil_zulauf`).
-> Ventil öffnet automatisch wenn Turmpumpe läuft, schließt wenn Pumpe aus.
-> Ausnahme: RV-Intervallbetrieb — Ventil bleibt unverändert.
+> Ventil folgt immer `pumpe_a_aktiv` (zentrale Logik in `ventil_auto`, 500ms).
+> Auch im RV-Intervall: Pumpe an → Ventil auf, Pumpe aus → Ventil zu.
 > Manuelle Bedienung im Tab System möglich.
 
 ### 1-Wire Bus
@@ -909,7 +909,7 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 | 2026-05-21 (session) | — | `lvgl_basis.yaml`: Tab „Test" → „Info" (`tab_test` → `tab_info`); Labels `lbl_info_build` (Build-Datum + ESPHome-Version, Compile-Time) und `lbl_info_wifi` (WiFi IP, Laufzeit) | `lvgl_basis.yaml` |
 | 2026-05-21 (session) | — | `hardware.yaml`: `text_sensor: wifi_info → ip_address` (`sensor_wifi_ip`, internal); `on_value` aktualisiert `lbl_info_wifi` | `hardware.yaml` |
 | 2026-06-16 (session) | — | Umwälzpumpe → **Rührwerk (DC-Motor)**: `output_pumpe_dacB` (MCP4728 ch B) entfernt; neuer PWM-Output `output_ruerwerk` (LEDC 25 kHz an `pin_pwm1` GPIO1) mit `c_ruerwerk_max_perc=60`; alle IDs umbenannt (`slider_ruerwerk`, `row_ruerwerk`, `lbl_ruerwerk`); `c_pumpe_umwaelzung_ein_perc` → `c_ruerwerk_ein_perc`; Steuerung `ruehrwerk_steuerung`; DAC ch B bleibt unbelegt | `hardware.yaml`, `schwippschwenker.yaml`, `lvgl_basis.yaml`, `schwenker.yaml`, `cooler.yaml`, `sc_projektinfo.md` |
-| 2026-06-16 (session) | — | **Ventil Zulauf**: `switch_ventil_zulauf` (GPIO an `pin_pwm2` GPIO2); Auto-Logik `ventil_auto` (500ms): folgt `pumpe_a_aktiv`, außer bei RV-Intervall (`rv_auto_phase_ms != 0`); manueller Button `btn_ventil_zulauf` (AUF/ZU) in Tab System (y:110); Zulauf zweigeteilt 50% Rückschlagventil + 50% Motorventil | `hardware.yaml`, `lvgl_basis.yaml`, `sc_projektinfo.md` |
+| 2026-06-16 (session) | — | **Ventil Zulauf**: `switch_ventil_zulauf` (GPIO an `pin_pwm2` GPIO2); Auto-Logik `ventil_auto` (500ms, stateless): folgt immer `pumpe_a_aktiv` — kein RV‑Guard, keine Script‑Aufrufe; manueller Button `btn_ventil_zulauf` (AUF/ZU) in Tab System (y:110); Zulauf zweigeteilt 50% Rückschlagventil + 50% Motorventil | `hardware.yaml`, `lvgl_basis.yaml`, `sc_projektinfo.md` |
 | 2026-06-16 (session) | — | **1-Wire Bus** `bus_1wire` auf `pin_1w` (GPIO45) angelegt (`one_wire: platform: gpio`); DS18B20 nativ eingebunden (`0x6800000fba16c428`, `dallas_temp`, `accuracy_decimals: 2`, 1s); I²C-Bridge `temp_bridge` (0x48) + Template-Sensor entfernt | `hardware.yaml`, `sc_projektinfo.md` |
 | 2026-06-16 (session) | — | **System-AUS-Guard**: alle 4 pumpenrelevanten Intervalle (`thermostat_steuerung`, `ruehrwerk_steuerung`, `ventil_auto`, `RV-Automodus`) prüfen `if (!id(system_ein)) return;` — keine Pumpenaktivität bei System AUS; `script_beckenpumpe_set_modus(0)` resettet jetzt auch `rv_auto_phase_ms` | `hardware.yaml`, `schwenker.yaml` |
 | 2026-06-16 (session) | — | **App-Titel** umbenannt: „SCK Schwippschwenker" → „SCK Massentreiber"; `font_title`-Glyphs um `M`, `b` ergänzt | `lvgl_basis.yaml`, `schwippschwenker.yaml`, `sc_projektinfo.md` |
