@@ -6,9 +6,9 @@
 #             output_luefter_kompressor_pwm, output_kompressor_relais
 #  switch:    switch_ventil_zulauf
 #  one_wire:  bus_1wire
-#  i2c:       i2c_amg8833, temp_bridge
+#  i2c:       i2c_amg8833
 #  globals:   amg_pixel_temps, kompressor_soll_ein
-#  sensor:    sensor_temp_becken, sensor_amg8833
+#  sensor:    sensor_temp_becken (dallas_temp, 0x6800000fba16c428), sensor_amg8833
 #  climate:   climate_thermostat
 #  script:    script_kompressor_delayed_start
 #  text_sensor: sensor_wifi_ip
@@ -184,11 +184,6 @@ i2c_device:
     address: 0x69
     i2c_id: i2c_bus
 
-  # DS18B20 I²C-Bridge (ESP32-C3 Slave, Adresse 0x48)
-  - id: temp_bridge
-    address: 0x48
-    i2c_id: i2c_bus
-
 # TCA9548A I2C-Multiplexer (Adresse 0x70)
 tca9548a:
   - id: i2c_mux
@@ -224,27 +219,22 @@ globals:
     initial_value: '0'
 
 sensor:
-  # Becken-Temperatursensor DS18B20 via I²C-Bridge (ESP32-C3, Adresse 0x48)
-  - platform: template
+  # Becken-Temperatursensor DS18B20 nativ via 1-Wire (pin_1w = GPIO45)
+  - platform: dallas_temp
     id: sensor_temp_becken
     name: "Temperatur Becken"
-    accuracy_decimals: 3
+    address: 0x6800000fba16c428
+    accuracy_decimals: 2
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    one_wire_id: bus_1wire
     update_interval: 1s
     filters:
       - median:
           window_size: 3
           send_every: 1
           send_first_at: 1
-    lambda: |-
-      uint8_t buf[2];
-      auto err = id(i2c_bus)->read(0x48, buf, 2);
-      if (err != i2c::ERROR_OK) return {};
-      int16_t raw = (int16_t)((buf[0] << 8) | buf[1]);
-      if (raw == (int16_t)0x8000) return {};
-      return roundf(raw / 16.0f * 20.0f) / 20.0f;  // auf 0.05°C runden
     on_value:
       - lvgl.widget.refresh: lbl_temp_becken
       - script.execute: script_kuehl_update

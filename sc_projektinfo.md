@@ -98,7 +98,7 @@ Ausgelegt für **Dosen und Flaschen** — durch das Drehen wird die Kühlleistun
 | Betrieb | Standalone (kein Home Assistant nötig) |
 | Zeit-Quelle | SNTP (NTP) — RTC wird später hinzugefügt |
 | Radio-Koprocessor | ESP32-C6 via `esp32_hosted` (SDIO 4-bit, extern definiert) |
-| 1-Wire Bus | DS18B20 an ESP32-C3 I²C-Bridge (`0x48`) → `temp_bridge` in `hardware.yaml` |
+| 1-Wire Bus | DS18B20 nativ an GPIO45 → `one_wire: bus_1wire` → `sensor_temp_becken` in `hardware.yaml` |
 
 ---
 
