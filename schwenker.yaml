@@ -755,11 +755,14 @@ script:
           id(pumpe_a_modus) = modus;
           // Aktion je Modus
           if (modus == 0) {
-            // AUS: Pumpe stoppen
+            // AUS: Pumpe stoppen, RV-Intervall beenden
             id(script_pumpe_a_kurz).stop();
             id(script_pumpe_a_lang).stop();
+            id(script_rv_pumpe_start).stop();
             id(pumpe_a_aktiv) = false;
             id(pumpe_a_auto_war_an) = false;
+            id(rv_auto_phase_ms) = 0;
+            id(rv_auto_pump_on)  = false;
             id(output_pumpe_dacA).set_level(0.0f);
             ESP_LOGI("pumpe", "Modus: AUS");
           } else if (modus == 1) {
@@ -1252,8 +1255,8 @@ interval:
   - interval: 500ms
     then:
       - lambda: |-
-          // Nur aktiv wenn: RV eingebaut, Pumpe-Modus=AUTO, kein Motor läuft
-          if (!id(global_rv_aktiv) || id(pumpe_a_modus) != 2 || id(dr_aktiv) || id(sw_aktiv)) {
+          // Nur aktiv wenn: System EIN, RV eingebaut, Pumpe-Modus=AUTO, kein Motor läuft
+          if (!id(system_ein) || !id(global_rv_aktiv) || id(pumpe_a_modus) != 2 || id(dr_aktiv) || id(sw_aktiv)) {
             // Motor läuft jetzt: Interval-Flag zurücksetzen (Pumpe läuft normal weiter)
             if (id(rv_auto_phase_ms) != 0 && (id(dr_aktiv) || id(sw_aktiv))) {
               id(rv_auto_phase_ms) = 0;

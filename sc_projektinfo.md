@@ -104,34 +104,13 @@ Ausgelegt für **Dosen und Flaschen** — durch das Drehen wird die Kühlleistun
 
 ## Becken-Temperatursensor
 
-**Sensor:** DS18B20 via I²C-Bridge (ESP32-C3, ESP-IDF 5.x, `1w_i2c_bridge/`)
+**Sensor:** DS18B20 nativ via 1‑Wire (`one_wire: bus_1wire`, `pin_1w` GPIO45)
 
-**I²C-Adresse:** `0x48` → `i2c_device: temp_bridge` in `hardware.yaml`  
-**Sensor-ID:** `sensor_temp_becken` in `hardware.yaml` (Template-Sensor, `update_interval: 1s`, `accuracy_decimals: 3`)
-**Gleitender Mittelwert:** ESPHome-Filter `sliding_window_moving_average` (window=5, send_every=1) bei `update_interval: 1s` → jede Sekunde ein Wert, gemittelt über die letzten 5
-**Datenformat:** `int16_raw / 16.0` → 0,0625 °C Auflösung; Error-Marker `0x8000`
+**Sensor-ID:** `0x6800000fba16c428`  
+**ESPHome-ID:** `sensor_temp_becken` (`platform: dallas_temp`, `one_wire_id: bus_1wire`, `update_interval: 1s`, `accuracy_decimals: 2`)  
+**Gleitender Mittelwert:** ESPHome-Filter `median` (window=3, send_every=1) bei `update_interval: 1s` → jede Sekunde ein Wert
 
-**Bridge-Firmware (`1w_i2c_bridge/main/main.c`):**
-
-| Pin | Funktion | Wert |
-|---|---|---|
-| GPIO0 | Sensor-VCC | OUTPUT HIGH (3,3 V) |
-| GPIO1 | 1-Wire Data | DS18B20, 4,7 kΩ Pull-Up |
-| GPIO2 | Sensor-GND | OUTPUT LOW |
-| GPIO3 | I²C SCL | Slave |
-| GPIO4 | I²C SDA | Slave |
-| GPIO8 | LED | active LOW, 2× Blinken bei gültiger Messung |
-
-- Messintervall: 3 s (`MEASURE_MS`), 12-bit → ~800 ms Wandlung
-- TX-Puffer wird alle 1 s aufgefrischt (`REFILL_MS`)
-- Kein WiFi / kein OTA (reine IDF-Firmware)
-
-**Alle sensorphalanx-Sensoren direkt am Haupt-Bus** (`i2c_bus`):
-- MLX90632 (`i2c_device`, `0x3A`)
-- VL53L4CD (`0x29`)
-- SHT4x (`0x44`)
-- BMP581 (`0x46`)
-- VEML7700 (`0x10`)
+**Hardware:** DS18B20 direkt an GPIO45 mit 4,7 kΩ Pull-Up an 3,3 V (kein externer ESP32-C3 mehr nötig)
 
 | ID | Typ | Wert |
 |---|---|---|
@@ -141,14 +120,13 @@ Ausgelegt für **Dosen und Flaschen** — durch das Drehen wird die Kühlleistun
 
 ## 1-Wire / Temperatursensoren
 
-**Bus:** DS18B20 hängt am ESP32-C3 I²C-Bridge (GPIO1, RMT-Hardware).
-ESPHome liest den Wert nicht direkt per 1-Wire, sondern über den I²C-Slave `temp_bridge` (0x48).
+**Bus:** DS18B20 direkt an GPIO45 (ESP32-P4 nativer 1‑Wire).
 
-| Rolle | Sensor | Bridge-ID | ESPHome-Sensor-ID | Datei |
+| Rolle | Sensor | Adresse | ESPHome-Sensor-ID | Datei |
 |---|---|---|---|---|
-| Becken-Temperatur | DS18B20 (ESP32-C3, GPIO1) | `temp_bridge` (0x48) | `sensor_temp_becken` | `hardware.yaml` |
+| Becken-Temperatur | DS18B20 (GPIO45) | `0x6800000fba16c428` | `sensor_temp_becken` | `hardware.yaml` |
 
-**Sensor-Einbindung (`hardware.yaml`):** Template-Sensor liest 2 Bytes von 0x48, rechnet `int16_raw / 16.0f`; Thermostat verwendet ihn direkt.
+**Sensor-Einbindung (`hardware.yaml`):** `dallas_temp`-Plattform auf `one_wire: bus_1wire`; Thermostat verwendet ihn direkt.
 
 ---
 
@@ -269,7 +247,7 @@ Aktualisiert auch das AMG8833-Overlay wenn es sichtbar ist.
 ## Page 1: Hauptseite (`page_main`)
 
 ### Titel
-- Text: "SC Schwippschwenker"
+- Text: "SCK Massentreiber"
 - Font: `font_title`, Farbe: `#003366`, oben mittig, y=20
 
 ### System-Notschalter (`btn_system_power`)
@@ -553,10 +531,7 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Info
 ### 1-Wire Bus
 | ID | Pin | Zweck |
 |---|---|---|
-| `bus_1wire` | `pin_1w` (GPIO45) | DS18B20 Beckentemperatur (ersetzt I²C-Bridge) |
-
-> **Achtung:** `sensor_temp_becken` läuft aktuell noch über I²C-Bridge `temp_bridge` (0x48).
-> Sobald die DS18B20-Sensor-ID bekannt ist, wird auf natives `platform: dallas` umgestellt.
+| `bus_1wire` | `pin_1w` (GPIO45) | DS18B20 Beckentemperatur (nativ, 0x6800000fba16c428) |
 
 ### I²C Devices
 | ID | Adresse | Beschreibung |
@@ -933,4 +908,6 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 | 2026-05-21 (session) | — | `hardware.yaml`: `text_sensor: wifi_info → ip_address` (`sensor_wifi_ip`, internal); `on_value` aktualisiert `lbl_info_wifi` | `hardware.yaml` |
 | 2026-06-16 (session) | — | Umwälzpumpe → **Rührwerk (DC-Motor)**: `output_pumpe_dacB` (MCP4728 ch B) entfernt; neuer PWM-Output `output_ruerwerk` (LEDC 25 kHz an `pin_pwm1` GPIO1) mit `c_ruerwerk_max_perc=60`; alle IDs umbenannt (`slider_ruerwerk`, `row_ruerwerk`, `lbl_ruerwerk`); `c_pumpe_umwaelzung_ein_perc` → `c_ruerwerk_ein_perc`; Steuerung `ruehrwerk_steuerung`; DAC ch B bleibt unbelegt | `hardware.yaml`, `schwippschwenker.yaml`, `lvgl_basis.yaml`, `schwenker.yaml`, `cooler.yaml`, `sc_projektinfo.md` |
 | 2026-06-16 (session) | — | **Ventil Zulauf**: `switch_ventil_zulauf` (GPIO an `pin_pwm2` GPIO2); Auto-Logik `ventil_auto` (500ms): folgt `pumpe_a_aktiv`, außer bei RV-Intervall (`rv_auto_phase_ms != 0`); manueller Button `btn_ventil_zulauf` (AUF/ZU) in Tab System (y:110); Zulauf zweigeteilt 50% Rückschlagventil + 50% Motorventil | `hardware.yaml`, `lvgl_basis.yaml`, `sc_projektinfo.md` |
-| 2026-06-16 (session) | — | **1-Wire Bus** `bus_1wire` auf `pin_1w` (GPIO45) angelegt (`dallas:`); `update_interval: 3s`; DS18B20-Sensor-ID folgt – `sensor_temp_becken` läuft weiter über I²C-Bridge bis zur Umstellung | `hardware.yaml`, `sc_projektinfo.md` |
+| 2026-06-16 (session) | — | **1-Wire Bus** `bus_1wire` auf `pin_1w` (GPIO45) angelegt (`one_wire: platform: gpio`); DS18B20 nativ eingebunden (`0x6800000fba16c428`, `dallas_temp`, `accuracy_decimals: 2`, 1s); I²C-Bridge `temp_bridge` (0x48) + Template-Sensor entfernt | `hardware.yaml`, `sc_projektinfo.md` |
+| 2026-06-16 (session) | — | **System-AUS-Guard**: alle 4 pumpenrelevanten Intervalle (`thermostat_steuerung`, `ruehrwerk_steuerung`, `ventil_auto`, `RV-Automodus`) prüfen `if (!id(system_ein)) return;` — keine Pumpenaktivität bei System AUS; `script_beckenpumpe_set_modus(0)` resettet jetzt auch `rv_auto_phase_ms` | `hardware.yaml`, `schwenker.yaml` |
+| 2026-06-16 (session) | — | **App-Titel** umbenannt: „SCK Schwippschwenker" → „SCK Massentreiber"; `font_title`-Glyphs um `M`, `b` ergänzt | `lvgl_basis.yaml`, `schwippschwenker.yaml`, `sc_projektinfo.md` |
