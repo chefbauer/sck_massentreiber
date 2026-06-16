@@ -31,6 +31,7 @@
         "/^cd /workspaces/display_drehwurm && python3 -c \"\nimport yaml, sys\nclass L\\(yaml\\.SafeLoader\\): pass\nyaml\\.add_multi_constructor\\('', lambda l,t,n: None, Loader=L\\)\nfor f in \\['schwenker\\.yaml', 'lvgl_basis\\.yaml', 'schwippschwenker\\.yaml', 'hardware\\.yaml'\\]:\n    try:\n        yaml\\.load\\(open\\(f\\), L\\)\n        print\\(f'OK  \\{f\\}'\\)\n    except Exception as e:\n        print\\(f'ERR \\{f\\}: \\{e\\}'\\)\n\"$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "ForEach-Object": true
     }
 }
