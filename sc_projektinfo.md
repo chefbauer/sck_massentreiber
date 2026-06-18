@@ -367,8 +367,8 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Info
 - `row_led_auto` (y:200): Switch `sw_led_auto` (VEML7700-Auto-Helligkeit)
 - `row_led_effekt` (y:290): Effekt-Buttons (Aus, Slot, Slot+, Mix, Strobo) → `light_slots_outer.set_effect()`
 - `row_led_hintergrund` (y:380): Hintergrundfarbe Weiß/Blau (für „Slot Colors on White")
-- `row_beckenlicht` (y:470): Beckenlicht: Farbtasten (Weiß, Blau, Türkis) + Slider (1–100%) → `light_slots_becken`
-- `row_slot_breite` (y:560): Slider `slider_slot_breite` (1–28 LEDs) + Wert-Label → `global_leds_per_slot`
+- `row_beckenlicht` (y:470): ⚠️ AUSKOMMENTIERT — WS2815 killt GPIO/Display (5 V-Pegel + 12 V-Kurzschlussgefahr); Reaktivierung nur mit Level-Shifter (74HCT125) + 1 kΩ Serie + 3,3 V Zener
+- `row_slot_breite` (y:470): Slider `slider_slot_breite` (1–28 LEDs) + Wert-Label → `global_leds_per_slot`
 
 ---
 
@@ -923,4 +923,4 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 | 2026-06-18 (session) | — | **Beckenlicht**: WS2815-Ring 35 LEDs auf `${pin_pwm3}` (GPIO3); `light_slots_becken` in `lights.yaml`; Farbtasten Weiß/Blau/Türkis + Slider `slider_beckenlicht` in Tab Licht (y:470); `pin_pwm3` jetzt mit Kommentar „Beckenlicht" | `lights.yaml`, `lvgl_basis.yaml`, `schwippschwenker.yaml` |
 | 2026-06-18 (session) | — | **Rührwerk-Steuerung vereinfacht**: Komplette ICE‑Puls‑State‑Machine entfernt; neuer 1s‑Interval: System AUS → aus, Motor an → `c_ruerwerk_power_on_perc` (60%), Motor aus → `c_ruerwerk_power_idle_perc` (30%); `c_ruerwerk_ein_perc` gelöscht | `hardware.yaml`, `schwippschwenker.yaml`, `cooler.yaml` |
 | 2026-06-18 (session) | — | **Pin-Check JC1060P470**: GPIO5 ist frei (MIPI‑RESET liegt auf GPIO27); alter Warnkommentar korrigiert | `schwippschwenker.yaml`, `sc_projektinfo.md` |
-| 2026-06-18 (session) | — | **Beckenlicht reaktiviert**: `light_slots_becken` auskommentierung entfernt (`rmt_symbols: 48` statt 24), `row_beckenlicht` in Tab Licht (y:470) wieder aktiv; Steuerung gefixt: Farbtasten lesen jetzt Slider-Wert für Brightness-Sync; `row_slot_breite` wieder auf y:560 | `lights.yaml`, `lvgl_basis.yaml` |
+| 2026-06-18 (session) | — | **Beckenlicht wieder deaktiviert**: WS2815 (5 V-Pegel/12 V-Strip) killt GPIO → Display tot. Erneute Auskommentierung mit Hardware-Warnung (Level-Shifter + Zener nötig vor Reaktivierung) | `lights.yaml`, `lvgl_basis.yaml` |
