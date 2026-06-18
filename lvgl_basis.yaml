@@ -210,6 +210,12 @@ image:
     resize: 56x56
     type: RGB
     transparency: alpha_channel
+  # Schildkröte klein (Drehmodus Speed-Indikator)
+  - file: graphics/turtle.svg
+    id: img_turtle_sm
+    resize: 22x22
+    type: RGB
+    transparency: alpha_channel
 
 # Timer-Globals für alle 6 Slots
 # Status: 0=gestoppt  1=läuft  2=pausiert
@@ -585,6 +591,32 @@ interval:
           // AMG8833 Overlay aktualisieren wenn sichtbar
           if (!lv_obj_has_flag(id(overlay_amg8833), LV_OBJ_FLAG_HIDDEN)) {
             amg_update_cells(id(amg_pixel_temps).data());
+          }
+          // ── Drehmodus-Info Overlay (RPM + Schildkröten) ──
+          {
+            bool _dr_on = id(dr_aktiv);
+            if (_dr_on) {
+              lv_obj_clear_flag(id(obj_dr_info), LV_OBJ_FLAG_HIDDEN);
+              int _rpm = id(dr_speed_rpm);
+              lv_label_set_text_fmt(id(lbl_dr_info_rpm), "%d UPM", _rpm);
+              int _tc = (_rpm < 20) ? 3 : (_rpm < 40) ? 2 : (_rpm < 60) ? 1 : 0;
+              if (_tc == 0) {
+                lv_obj_add_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_clear_flag(id(lbl_dr_info_fast), LV_OBJ_FLAG_HIDDEN);
+              } else {
+                lv_obj_add_flag(id(lbl_dr_info_fast), LV_OBJ_FLAG_HIDDEN);
+                if (_tc >= 1) lv_obj_clear_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
+                else          lv_obj_add_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
+                if (_tc >= 2) lv_obj_clear_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
+                else          lv_obj_add_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
+                if (_tc >= 3) lv_obj_clear_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
+                else          lv_obj_add_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
+              }
+            } else {
+              lv_obj_add_flag(id(obj_dr_info), LV_OBJ_FLAG_HIDDEN);
+            }
           }
           // Uhrzeit in Statusleiste aktualisieren (SNTP)
           auto t = id(sntp_time).now();
@@ -971,6 +1003,59 @@ lvgl:
                               text: "\uF021"
                               text_font: font_icon_xl
                               text_color: 0xFFFFFF
+                    # ── Drehmodus-Info Overlay (rpm + turtle indicator) ──
+                    - obj:
+                        id: obj_dr_info
+                        width: 140
+                        height: 70
+                        align: CENTER
+                        bg_opa: TRANSP
+                        border_width: 0
+                        clickable: false
+                        scrollable: false
+                        hidden: true
+                        widgets:
+                          - label:
+                              id: lbl_dr_info_rpm
+                              text: "-- UPM"
+                              text_font: font_default_40px
+                              text_color: 0xFFFFFF
+                              align: TOP_MID
+                              y: 0
+                          - obj:
+                              id: obj_dr_info_turtles
+                              width: 108
+                              height: 24
+                              align: BOTTOM_MID
+                              y: 0
+                              bg_opa: TRANSP
+                              border_width: 0
+                              clickable: false
+                              scrollable: false
+                              widgets:
+                                - image:
+                                    id: img_dr_turtle1
+                                    src: img_turtle_sm
+                                    align: LEFT_MID
+                                    x: 0
+                                    hidden: true
+                                - image:
+                                    id: img_dr_turtle2
+                                    src: img_turtle_sm
+                                    align: CENTER
+                                    hidden: true
+                                - image:
+                                    id: img_dr_turtle3
+                                    src: img_turtle_sm
+                                    align: RIGHT_MID
+                                    hidden: true
+                                - label:
+                                    id: lbl_dr_info_fast
+                                    text: ">>"
+                                    text_font: font_default_40px
+                                    text_color: 0xFFCC00
+                                    align: CENTER
+                                    hidden: true
                     # ── Slot-Marker: Kreise mit Slot-Farben, rotieren mit Motor-Winkel ──
                     - button:
                         id: ring_slot1_marker
