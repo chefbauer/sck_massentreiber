@@ -20,7 +20,7 @@ substitutions:
   pin_pwm2:        GPIO2
   pin_pwm3:        GPIO3    # Beckenlicht WS2815 (35 LEDs)
   pin_pwm4:        GPIO4
-  pin_led_h1:      GPIO5    # Board-Pin 5, frei (MIPI-RESET liegt auf GPIO27)
+  pin_led_h1:      GPIO5    # ⚠️ MIPI-DSI-Reset — KEIN freier Pin! Nicht verwenden!
   pin_led_h2:      GPIO20   # Board-Pin 6
   pin_led_v1:      GPIO47
   pin_led_v2:      GPIO46

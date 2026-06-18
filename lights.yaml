@@ -1,7 +1,7 @@
 # ── Komponenten ──────────────────────────────────────────────────────────────────
 #  substitutions:  c_led_strip_outer_led_num, c_led_strip_outer_led_0deg,
 #                  c_led_strip_leds_per_slot, c_led_strip_outer_direction
-#  light:          light_slots_outer
+#  light:          light_slots_outer, light_slots_becken
 #
 #  sensor (extern, definiert in lvgl_basis.yaml):
 #    sensor_leds_per_slot  → Slot-Breite zur Laufzeit (1 … led_num/6)
@@ -12,8 +12,8 @@
 #    bin_slot1_blink .. bin_slot6_blink  → Blink-Zustand je Slot (->state: plain bool)
 #
 #  Abhängigkeiten (extern, nicht in dieser Datei):
-#    pin_led_h1           → schwippschwenker.yaml
-#    pin_pwm3             → schwippschwenker.yaml (GPIO3, Beckenlicht 35 LEDs – AUSKOMMENTIERT)
+#    pin_led_h1           → schwippschwenker.yaml (GPIO5, ⚠️ MIPI-DSI-Reset, NICHT verwenden!)
+#    pin_led_h2           → schwippschwenker.yaml (GPIO20, WS2812-Ring außen)
 #    c_motor_direction    → schwippschwenker.yaml
 #    sensor_motor_position → motorcontrol_can-bus.yaml  (0–16383 = 0–360°)
 # ─────────────────────────────────────────────────────────────────────────────────
@@ -361,19 +361,16 @@ light:
               }
             }
 
-  # Beckenlicht (WS2815-Ring 35 LEDs, GPIO3)  – AUSKOMMENTIERT: WS2815 killt Display
-  # Der 5V-Pegel der WS2815-Datenleitung überspannt die GPIO-ESD-Diode,
-  # 12V-Kurzschluss auf Data-Line zerstört den ESP32-P4 irreversibel.
-  # Vor Reaktivierung: 3.3V↔5V Level-Shifter (74HCT125) + 1kΩ Serie + 3.3V Zener einbauen.
-  # - platform: esp32_rmt_led_strip
-  #   rgb_order: GRB
-  #   chipset: WS2812
-  #   pin: ${pin_pwm3}
-  #   num_leds: 35
-  #   rmt_symbols: 48
-  #   use_psram: false
-  #   use_dma: false
-  #   name: "Beckenlicht"
-  #   id: light_slots_becken
-  #   default_transition_length: 500ms
-  #   restore_mode: RESTORE_DEFAULT_ON
+  # Beckenlicht (WS2815-Ring 35 LEDs, GPIO3)
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    chipset: WS2812
+    pin: ${pin_pwm3}
+    num_leds: 35
+    rmt_symbols: 48
+    use_psram: false
+    use_dma: false
+    name: "Beckenlicht"
+    id: light_slots_becken
+    default_transition_length: 500ms
+    restore_mode: RESTORE_DEFAULT_ON
