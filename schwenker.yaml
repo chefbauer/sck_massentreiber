@@ -48,6 +48,7 @@
 #            script_schwenker_stop, script_schwenker_goto_slot,
 #            script_motor_reboot, script_pumpe_a_kurz, script_pumpe_a_lang,
 #            script_pumpe_a_aus, script_system_ein, script_system_aus,
+#            script_load_drehen_preset,
 #            script_drehen_start, script_drehen_stop, script_drehen_settings_open
 #  button:   btn_motor_toggle
 #  interval: (kein id)
@@ -250,7 +251,7 @@ globals:
   - id: dr_modus             # letzter aktiver Modus: false=Schwenken, true=Drehen
     type: bool
     restore_value: yes
-    initial_value: 'false'
+    initial_value: 'true'
 
   - id: dr_speed_rpm         # Drehgeschwindigkeit 1–150 UPM (echte UPM; F6-Wert = ×8 wegen 128 Sub)
     type: int
@@ -559,7 +560,7 @@ script:
           ESP_LOGI("schwenker", "START  halbperiode=%u ms  max=%d RPM",
                    id(sw_halbperiode_ms), id(sw_max_speed_rpm));
           id(sw_aktiv)     = true;
-          id(dr_modus)     = false;   // Modus auf Schwenken speichern (NVS)
+          id(dr_modus)     = false;   // Modus auf Schwenken setzen (NVS)
           lv_label_set_text(id(lbl_motor_icon), "\xef\x80\xa1");  // U+F021 arrows-rotate (Schwenken)
           lv_obj_set_style_bg_color(id(btn_motor_main), lv_color_hex(0x229933), 0);
           lv_obj_set_style_bg_color(id(btn_schwenker_overlay_toggle), lv_color_hex(0x229933), 0);
@@ -918,6 +919,29 @@ script:
           id(output_pumpe_dacA).set_level(sv / 100.0f);
           ESP_LOGI("rv", "Pumpe: Zielwert %d%%", sv);
 
+  # ── Drehen-Preset laden (aufgerufen von set_countdown_secs) ──
+  - id: script_load_drehen_preset
+    mode: single
+    parameters:
+      preset: int
+    then:
+      - lambda: |-
+          int p = preset;
+          if (p < 1 || p > 4) return;
+          int rpm=30, acc=80, richt=1, mode=4, pumpe=1;  // defaults
+          if      (p == 1) { rpm=id(drp1_rpm); acc=id(drp1_acc); richt=id(drp1_richtung); mode=id(drp1_mode); pumpe=id(drp1_pumpe); }
+          else if (p == 2) { rpm=id(drp2_rpm); acc=id(drp2_acc); richt=id(drp2_richtung); mode=id(drp2_mode); pumpe=id(drp2_pumpe); }
+          else if (p == 3) { rpm=id(drp3_rpm); acc=id(drp3_acc); richt=id(drp3_richtung); mode=id(drp3_mode); pumpe=id(drp3_pumpe); }
+          else if (p == 4) { rpm=id(drp4_rpm); acc=id(drp4_acc); richt=id(drp4_richtung); mode=id(drp4_mode); pumpe=id(drp4_pumpe); }
+          id(dr_speed_rpm)  = rpm;
+          id(dr_acc)        = acc;
+          id(dr_richtung)   = richt;
+          id(dr_motor_mode) = mode;
+          id(dr_pumpe_auto) = (bool)pumpe;
+          id(dr_modus)      = true;
+          ESP_LOGI("cd_mini", "Drehen-Preset %d geladen: %d UPM, acc=%d, dir=%+d",
+                   p, rpm, acc, richt);
+
   - id: script_pumpe_a_aus
     mode: restart
     then:
@@ -1018,6 +1042,27 @@ script:
             lv_label_set_text(id(lbl_dr_pumpe_auto), "Pumpe: manuell");
             lv_obj_set_style_bg_color(id(btn_dr_pumpe_auto), lv_color_hex(0x555555), 0);
           }
+          // Preset-Label aus NVS syncen (drp1..5)
+          char pb1[24]; snprintf(pb1, sizeof(pb1), "%s:%d, A:%d, P:%s",
+            id(drp1_richtung) > 0 ? "R" : "L", id(drp1_rpm), id(drp1_acc),
+            id(drp1_pumpe) ? "ON" : "OFF");
+          lv_label_set_text(id(lbl_drp1_vals), pb1);
+          char pb2[24]; snprintf(pb2, sizeof(pb2), "%s:%d, A:%d, P:%s",
+            id(drp2_richtung) > 0 ? "R" : "L", id(drp2_rpm), id(drp2_acc),
+            id(drp2_pumpe) ? "ON" : "OFF");
+          lv_label_set_text(id(lbl_drp2_vals), pb2);
+          char pb3[24]; snprintf(pb3, sizeof(pb3), "%s:%d, A:%d, P:%s",
+            id(drp3_richtung) > 0 ? "R" : "L", id(drp3_rpm), id(drp3_acc),
+            id(drp3_pumpe) ? "ON" : "OFF");
+          lv_label_set_text(id(lbl_drp3_vals), pb3);
+          char pb4[24]; snprintf(pb4, sizeof(pb4), "%s:%d, A:%d, P:%s",
+            id(drp4_richtung) > 0 ? "R" : "L", id(drp4_rpm), id(drp4_acc),
+            id(drp4_pumpe) ? "ON" : "OFF");
+          lv_label_set_text(id(lbl_drp4_vals), pb4);
+          char pb5[24]; snprintf(pb5, sizeof(pb5), "%s:%d, A:%d, P:%s",
+            id(drp5_richtung) > 0 ? "R" : "L", id(drp5_rpm), id(drp5_acc),
+            id(drp5_pumpe) ? "ON" : "OFF");
+          lv_label_set_text(id(lbl_drp5_vals), pb5);
 
   # ── Drehen starten ────────────────────────────────────────
   - id: script_drehen_start
@@ -1102,8 +1147,6 @@ script:
           float ramp_s = (float)(id(dr_speed_rpm) * 8) * (256 - id(dr_acc)) * 0.00005f;
           ESP_LOGI("drehen", "START  %d UPM (F6=%d)  acc=%d  ramp=%.1fs  dir=%+d  mode=%d",
                    id(dr_speed_rpm), speed_val, id(dr_acc), ramp_s, id(dr_richtung), id(dr_motor_mode));
-
-  # ── Drehen stoppen ────────────────────────────────────────
   - id: script_drehen_stop
     mode: single
     then:
