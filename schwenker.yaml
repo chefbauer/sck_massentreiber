@@ -41,6 +41,7 @@
 #            dr_pumpe_auto
 #            drp[1..5]_rpm / _acc / _richtung / _mode / _pumpe
 #            global_rv_aktiv, rv_auto_phase_ms, rv_auto_pump_on
+#            global_standby_open_ventil
 #  script:   script_schwenker_settings_open, script_schwenker_start,
 #            script_schwenker_stop, script_schwenker_goto_slot,
 #            script_motor_reboot, script_pumpe_a_kurz, script_pumpe_a_lang,
@@ -318,6 +319,12 @@ globals:
   - id: global_rv_aktiv          # RV eingebaut: true = kein Turbo beim Drehen, stattdessen Interval-Modus
     type: bool
     restore_value: yes
+    initial_value: 'false'
+
+  # ── Standby Ventil ────────────────────────────────────────
+  - id: global_standby_open_ventil  # true = Ventil Zulauf öffnen wenn Standby aktiv (immer AUS nach Boot)
+    type: bool
+    restore_value: no
     initial_value: 'false'
 
   - id: rv_auto_phase_ms         # millis() beim Start des aktuellen Intervall-Zyklus (0 = inaktiv)
@@ -931,6 +938,7 @@ script:
           id(script_beckenpumpe_set_modus)->execute(0);
           if (id(dr_aktiv)) id(script_drehen_stop).execute();
           id(output_ruerwerk).turn_off();
+          id(switch_ventil_zulauf).turn_off();
           ESP_LOGI("system", "AUS: Thermostat OFF, Ziel=%.1f°C gesichert",
                    id(thermostat_ziel_x10) / 10.0f);
 

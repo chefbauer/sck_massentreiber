@@ -473,8 +473,14 @@ binary_sensor:
       - delayed_off: 3s
     on_press:
       - lvgl.widget.show: lbl_standby_icon
+      - if:
+          condition:
+            lambda: 'return id(global_standby_open_ventil);'
+          then:
+            - switch.turn_on: switch_ventil_zulauf
     on_release:
       - lvgl.widget.hide: lbl_standby_icon
+      - switch.turn_off: switch_ventil_zulauf
 
 script:
     # Schließt overlay_temp_messung (X-Button / Touch auf Temp-Label)
