@@ -580,10 +580,18 @@ interval:
   # ── ventil_auto: Ventil folgt Beckenpumpe ─────────────────────────────────
   # Zulauf zweigeteilt: 50% Rückschlagventil (passiv), 50% Motorventil (aktiv).
   # Schließen immer wenn Pumpe aus; Öffnen nur außerhalb des RV-Intervalls.
+  # Block-Flag flag_standby_block_pump_auto → Ventil ZU, keine Auto-Öffnung.
   - interval: 500ms
     then:
       - lambda: |-
           if (!id(system_ein)) return;  // System AUS → nichts tun
+
+          // Standby-Block: Ventil ZU halten, keine Auto-Öffnung
+          if (id(flag_standby_block_pump_auto)) {
+            if (id(switch_ventil_zulauf).state)
+              id(switch_ventil_zulauf).turn_off();
+            return;
+          }
 
           bool soll_auf = id(pumpe_a_aktiv);
           bool ist_auf  = id(switch_ventil_zulauf).state;

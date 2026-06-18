@@ -165,3 +165,34 @@ läuft der Schwenker einen Halbzyklus und stoppt dann sofort (Ein-Schuss-Bug).
 - [ ] `update_interval: 10ms` gesetzt? (100 Hz Standard für alle Slot-Effekte)
 - [ ] `# ── Komponenten ──` Kommentarblock in `lights.yaml` aktualisiert?
 - [ ] Changelog + Update-Log in `sc_projektinfo.md` ergänzt?
+
+---
+
+## 9. Event-basierte Block-Flags (NEU ab 2026-06-18)
+
+**Problem:** Auto-Intervalle (ventil_auto 500ms, Pump-AUTO-Modus, RV-Intervall) overriden
+einmalige Aktionen (Standby → Ventil ZU, Not-Aus). Das führt zu Wettrennen.
+
+**Lösung: Block-Flags statt direkter Steuerung.**
+
+### Namenskonvention
+```
+flag_blocked_<was_wird_geblockt>    → z.B. flag_blocked_pump_auto_mode
+flag_requested_<was_wird_angefordert> → z.B. flag_requested_ventil_close
+```
+
+### Pattern
+1. **Block-Flag setzen** im Event (z.B. `bin_standby.on_press`)
+2. **Auto-Intervalle prüfen** das Flag → `if (flag) return;`
+3. **Block-Flag löschen** im Gegen-Event (z.B. `bin_standby.on_release`)
+
+### Vorhandene Block-Flags
+| Flag | Setzt bei | Löscht bei | Wirkung |
+|---|---|---|---|
+| `flag_standby_block_pump_auto` | Standby EIN + User-Switch AN | Standby AUS | Sperrt ventil_auto, Pump-AUTO, RV-Intervall |
+
+### Regel
+- **Neue Features MÜSSEN Block-Flags verwenden.** Keine direkte `switch.turn_on/off` mehr,
+  wenn ein Auto-Intervall denselben Ausgang steuert.
+- **Vorhandene Logik nur auf explizite Anforderung umbauen.**
+- Jedes Block-Flag bekommt einen `ESP_LOGI`-Eintrag beim Setzen/Löschen für Debugging.

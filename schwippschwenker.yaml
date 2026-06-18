@@ -52,8 +52,8 @@ substitutions:
   c_tof_enable_mlx_distance:   "50"   # mm – TOF-Distanz zum Öffnen des IR-Temp-Overlays
 
   # ── Standby-Erkennung ────────────────────────────────────
-  c_standby_delay:        180s    # Verzögerung bis Standby aktiv (delayed_on)
-  c_standby_lvgl_idle:    120s    # LVGL muss X Sekunden inaktiv sein
+  c_standby_delay:        30s     # test 180s    # Verzögerung bis Standby aktiv (delayed_on)
+  c_standby_lvgl_idle:    15s     # test 120s    # LVGL muss X Sekunden inaktiv sein
   c_standby_tof_min_mm:   "800"   # TOF-Distanz mm: darunter = Person anwesend
 
   # ── LED-Ring (WS2812, außen) ──────────────────────────────

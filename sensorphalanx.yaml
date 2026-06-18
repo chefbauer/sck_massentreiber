@@ -467,7 +467,7 @@ binary_sensor:
     lambda: |-
       float d = id(distance_sensor).state;
       bool tof_frei = isnan(d) || d > ${c_standby_tof_min_mm};
-      return tof_frei && id(global_lvgl_is_idle);
+      return tof_frei && id(global_lvgl_is_idle) && !id(sw_aktiv) && !id(dr_aktiv);
     filters:
       - delayed_on: ${c_standby_delay}
       - delayed_off: 3s
@@ -477,10 +477,24 @@ binary_sensor:
           condition:
             lambda: 'return id(global_standby_open_ventil);'
           then:
-            - switch.turn_on: switch_ventil_zulauf
+            - lambda: |-
+                id(flag_standby_block_pump_auto) = true;
+                id(switch_ventil_zulauf).turn_off();
+                // Pumpe stilllegen ohne Modus zu ändern (Block-Flag verhindert Auto-Reaktivierung)
+                id(script_pumpe_a_kurz).stop();
+                id(script_pumpe_a_lang).stop();
+                id(script_rv_pumpe_start).stop();
+                id(pumpe_a_aktiv) = false;
+                id(pumpe_a_auto_war_an) = false;
+                id(rv_auto_phase_ms) = 0;
+                id(rv_auto_pump_on)  = false;
+                id(output_pumpe_dacA).set_level(0.0f);
+                ESP_LOGI("standby", "Block: Pump-AUTO gesperrt, Pumpe+RV aus, Ventil ZU");
     on_release:
       - lvgl.widget.hide: lbl_standby_icon
-      - switch.turn_off: switch_ventil_zulauf
+      - lambda: |-
+          id(flag_standby_block_pump_auto) = false;
+          ESP_LOGI("standby", "Block aufgehoben – Pump-AUTO wieder frei");
 
 script:
     # Schließt overlay_temp_messung (X-Button / Touch auf Temp-Label)
