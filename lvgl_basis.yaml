@@ -114,6 +114,7 @@ font:
       - "\uF2F2"  # stopwatch (Stoppuhr)
       - "\uF252"  # hourglass-half (Countdown/Sanduhr)
       - "\ue516"  # jar (fa-jar, FA6 v6.0, Dose/Konserve, cd_mini Reihen-Icon)
+      - "\uF101"  # angle-double-right (>>> Schnell-Indikator)
 
   # Digital-7 Mono Font für Timer-Anzeige
   - file: "fonts/digital-7_mono.ttf"
@@ -592,30 +593,24 @@ interval:
           if (!lv_obj_has_flag(id(overlay_amg8833), LV_OBJ_FLAG_HIDDEN)) {
             amg_update_cells(id(amg_pixel_temps).data());
           }
-          // ── Drehmodus-Info Overlay (RPM + Schildkröten) ──
+          // ── Drehmodus-Info Overlay (zeigt gespeicherte Einstellungen, nicht Laufzustand) ──
           {
-            bool _dr_on = id(dr_aktiv);
-            if (_dr_on) {
-              lv_obj_clear_flag(id(obj_dr_info), LV_OBJ_FLAG_HIDDEN);
-              int _rpm = id(dr_speed_rpm);
-              lv_label_set_text_fmt(id(lbl_dr_info_rpm), "%d UPM", _rpm);
-              int _tc = (_rpm < 20) ? 3 : (_rpm < 40) ? 2 : (_rpm < 60) ? 1 : 0;
-              if (_tc == 0) {
-                lv_obj_add_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
-                lv_obj_clear_flag(id(lbl_dr_info_fast), LV_OBJ_FLAG_HIDDEN);
-              } else {
-                lv_obj_add_flag(id(lbl_dr_info_fast), LV_OBJ_FLAG_HIDDEN);
-                if (_tc >= 1) lv_obj_clear_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
-                else          lv_obj_add_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
-                if (_tc >= 2) lv_obj_clear_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
-                else          lv_obj_add_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
-                if (_tc >= 3) lv_obj_clear_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
-                else          lv_obj_add_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
-              }
+            int _rpm = id(dr_speed_rpm);
+            lv_label_set_text_fmt(id(lbl_dr_info_rpm), "%d UPM", _rpm);
+            int _tc = (_rpm < 20) ? 3 : (_rpm < 40) ? 2 : (_rpm < 60) ? 1 : 0;
+            if (_tc == 0) {
+              lv_obj_add_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_clear_flag(id(lbl_dr_info_fast), LV_OBJ_FLAG_HIDDEN);
             } else {
-              lv_obj_add_flag(id(obj_dr_info), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(id(lbl_dr_info_fast), LV_OBJ_FLAG_HIDDEN);
+              if (_tc >= 1) lv_obj_clear_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
+              else          lv_obj_add_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
+              if (_tc >= 2) lv_obj_clear_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
+              else          lv_obj_add_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
+              if (_tc >= 3) lv_obj_clear_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
+              else          lv_obj_add_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
             }
           }
           // Uhrzeit in Statusleiste aktualisieren (SNTP)
@@ -1013,7 +1008,6 @@ lvgl:
                         border_width: 0
                         clickable: false
                         scrollable: false
-                        hidden: true
                         widgets:
                           - label:
                               id: lbl_dr_info_rpm
