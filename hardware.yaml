@@ -156,6 +156,10 @@ switch:
     pin: ${pin_pwm2}
     restore_mode: ALWAYS_OFF
     name: "Ventil Zulauf"
+    on_turn_on:
+      - lvgl.widget.refresh: lbl_ventil_status
+    on_turn_off:
+      - lvgl.widget.refresh: lbl_ventil_status
 
 # ── 1-Wire Bus (DS18B20 Beckentemperatur) ────────────────────────────────────
 # Sensor-ID wird nach Hardware-Identifikation nachgetragen.
@@ -577,32 +581,42 @@ interval:
                                 : (${c_ruerwerk_power_idle_perc} / 100.0f);
           id(output_ruerwerk).set_level(level);
 
-  # ── ventil_auto: Ventil folgt Beckenpumpe ─────────────────────────────────
-  # Zulauf zweigeteilt: 50% Rückschlagventil (passiv), 50% Motorventil (aktiv).
-  # Schließen immer wenn Pumpe aus; Öffnen nur außerhalb des RV-Intervalls.
-  # Block-Flag flag_standby_block_pump_auto → Ventil ZU, keine Auto-Öffnung.
+  # ── ventil_auto: ZENTRALE VENTILSTEUERUNG ──────────────────────────────
+  # Nur diese Stelle ruft switch_ventil_zulauf.turn_on/off auf.
+  # Alle anderen setzen nur request-/block-flags.
+  # Priority: Requests > Blocks > System-EIN > Auto
+  # Label-Refresh automatisch via switch_ventil_zulauf.on_turn_on/off
   - interval: 500ms
     then:
       - lambda: |-
-          if (!id(system_ein)) return;  // System AUS → nichts tun
+          bool ist_auf = id(switch_ventil_zulauf).state;
+          bool soll_auf = false;
 
-          // Standby-Block: Ventil ZU halten, keine Auto-Öffnung
-          if (id(flag_standby_block_pump_auto)) {
-            if (id(switch_ventil_zulauf).state)
-              id(switch_ventil_zulauf).turn_off();
+          // 1. Request: einmalig, danach gelöscht → Auto entscheidet im nächsten Zyklus
+          if (id(flag_requested_ventil_close)) {
+            id(flag_requested_ventil_close) = false;
+            if (ist_auf) id(switch_ventil_zulauf).turn_off();
+            return;
+          }
+          if (id(flag_requested_ventil_open)) {
+            id(flag_requested_ventil_open) = false;
+            if (!ist_auf) id(switch_ventil_zulauf).turn_on();
             return;
           }
 
-          bool soll_auf = id(pumpe_a_aktiv);
-          bool ist_auf  = id(switch_ventil_zulauf).state;
+          // 2. Blocks (dauerhaft, nur Verursacher löscht sie)
+          if (id(flag_blocked_ventil_auto)) { soll_auf = false; }
+          else if (id(flag_standby_block_pump_auto) && id(global_standby_open_ventil)) { soll_auf = true; }
+          // 3. System AUS → ZU
+          else if (!id(system_ein)) { soll_auf = false; }
+          // 4. Auto
+          else { soll_auf = id(pumpe_a_aktiv) && id(rv_auto_phase_ms) == 0; }
 
-          if (soll_auf && !ist_auf && id(rv_auto_phase_ms) == 0) {
-            // Nur öffnen wenn Pumpe ein UND nicht im RV-Intervall
+          // Ventil nur schalten wenn nötig
+          if (soll_auf && !ist_auf)
             id(switch_ventil_zulauf).turn_on();
-          } else if (!soll_auf && ist_auf) {
-            // Immer schließen wenn Pumpe aus (auch im RV-Intervall)
+          else if (!soll_auf && ist_auf)
             id(switch_ventil_zulauf).turn_off();
-          }
 
   # ── wifi_scan: alle 30s verfügbare Netze aktualisieren ───────────────────
   # Kombiniert verbundenes Netz + Scan-Ergebnisse in einen String.

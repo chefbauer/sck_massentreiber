@@ -2485,7 +2485,7 @@ lvgl:
                                   on_click:
                                     - lvgl.widget.show: overlay_sensorphalanx
 
-                        # Zeile: Ventil Zulauf (manuell on/off)
+                        # Zeile: Ventil Zulauf (manuell öffnen/schließen)
                         - obj:
                             id: row_ventil_zulauf
                             width: 960
@@ -2498,33 +2498,51 @@ lvgl:
                             scrollbar_mode: "off"
                             widgets:
                               - label:
-                                  id: lbl_ventil_zulauf
-                                  text: "Ventil Zulauf"
+                                  text: "Ventil"
                                   align: LEFT_MID
                                   x: 10
                                   text_font: font_normal
                                   text_color: 0x000000
+                              - label:
+                                  id: lbl_ventil_status
+                                  text: !lambda |-
+                                    return id(switch_ventil_zulauf).state ? std::string("offen") : std::string("geschlossen");
+                                  align: LEFT_MID
+                                  x: 170
+                                  text_font: font_normal
+                                  text_color: 0x003366
                               - button:
-                                  id: btn_ventil_zulauf
-                                  width: 160
-                                  height: 60
-                                  align: RIGHT_MID
-                                  x: -10
-                                  bg_color: 0x666666
+                                  id: btn_ventil_oeffnen
+                                  width: 120
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 390
+                                  bg_color: 0x229933
+                                  on_click:
+                                    - lambda: |-
+                                        id(flag_requested_ventil_open) = true;
                                   widgets:
                                     - label:
-                                        id: lbl_ventil_state
-                                        text: "ZU"
+                                        text: "Öffnen"
                                         align: CENTER
                                         text_font: font_normal
                                         text_color: 0xFFFFFF
+                              - button:
+                                  id: btn_ventil_schliessen
+                                  width: 120
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 530
+                                  bg_color: 0x993322
                                   on_click:
-                                    - switch.toggle: switch_ventil_zulauf
                                     - lambda: |-
-                                        bool on = id(switch_ventil_zulauf).state;
-                                        lv_obj_set_style_bg_color(id(btn_ventil_zulauf),
-                                          lv_color_hex(on ? 0x229933 : 0x666666), 0);
-                                        lv_label_set_text(id(lbl_ventil_state), on ? "AUF" : "ZU");
+                                        id(flag_requested_ventil_close) = true;
+                                  widgets:
+                                    - label:
+                                        text: "Schließen"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
 
                         # Zeile: Turmpumpe Label + Slider
                         - obj:

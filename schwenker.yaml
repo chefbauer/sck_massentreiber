@@ -42,7 +42,8 @@
 #            drp[1..5]_rpm / _acc / _richtung / _mode / _pumpe
 #            global_rv_aktiv, rv_auto_phase_ms, rv_auto_pump_on
 #            global_standby_open_ventil
-#            flag_standby_block_pump_auto
+#            flag_standby_block_pump_auto,
+#            flag_blocked_ventil_auto, flag_requested_ventil_open, flag_requested_ventil_close
 #  script:   script_schwenker_settings_open, script_schwenker_start,
 #            script_schwenker_stop, script_schwenker_goto_slot,
 #            script_motor_reboot, script_pumpe_a_kurz, script_pumpe_a_lang,
@@ -322,8 +323,24 @@ globals:
     restore_value: yes
     initial_value: 'false'
 
-  # ── Block-Flags (eventbasiert, verhindern Override durch Auto-Intervalle) ──
-  - id: flag_standby_block_pump_auto  # true = Standby blockiert Pump-AUTO-Modus (Ventil+Motor)
+  # ── Block-/Request-Flags (eventbasiert) ──────────────────
+  # Block: bleibt bis Verursacher löscht. Request: einmalig → ventil_auto verarbeitet + löscht.
+  - id: flag_standby_block_pump_auto  # true = Standby blockiert Pump-AUTO-Modus
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: flag_blocked_ventil_auto       # true = Not-Aus blockiert Ventil-Auto (System EIN resettet)
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: flag_requested_ventil_open      # einmalig: Button "Öffnen" → ventil_auto öffnet Ventil
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: flag_requested_ventil_close     # einmalig: Button "Schließen" → ventil_auto schließt Ventil
     type: bool
     restore_value: no
     initial_value: 'false'
@@ -929,8 +946,9 @@ script:
           call.set_target_temperature(_t);
           call.perform();
           // Pumpe auf AUTO setzen
+          id(flag_blocked_ventil_auto) = false;
           id(script_beckenpumpe_set_modus)->execute(2);
-          ESP_LOGI("system", "EIN: Thermostat COOL %.1f°C", _t);
+          ESP_LOGI("system", "EIN: Thermostat COOL %.1f°C, Ventil-Block gelöscht", _t);
 
   # ── System AUS ───────────────────────────────────────────
   - id: script_system_aus
@@ -955,8 +973,8 @@ script:
           id(script_beckenpumpe_set_modus)->execute(0);
           if (id(dr_aktiv)) id(script_drehen_stop).execute();
           id(output_ruerwerk).turn_off();
-          id(switch_ventil_zulauf).turn_off();
-          ESP_LOGI("system", "AUS: Thermostat OFF, Ziel=%.1f°C gesichert",
+          id(flag_blocked_ventil_auto) = true;
+          ESP_LOGI("system", "AUS: Thermostat OFF, Ziel=%.1f°C gesichert, Ventil-Block gesetzt",
                    id(thermostat_ziel_x10) / 10.0f);
 
   # ── Drehen: Einstellungs-Overlay syncen ──────────────────

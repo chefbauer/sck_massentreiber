@@ -186,10 +186,13 @@ flag_requested_<was_wird_angefordert> → z.B. flag_requested_ventil_close
 2. **Auto-Intervalle prüfen** das Flag → `if (flag) return;`
 3. **Block-Flag löschen** im Gegen-Event (z.B. `bin_standby.on_release`)
 
-### Vorhandene Block-Flags
-| Flag | Setzt bei | Löscht bei | Wirkung |
-|---|---|---|---|
-| `flag_standby_block_pump_auto` | Standby EIN + User-Switch AN | Standby AUS | Sperrt ventil_auto, Pump-AUTO, RV-Intervall |
+### Vorhandene Block-/Request-Flags
+| Flag | Typ | Setzt bei | Löscht bei | Wirkung |
+|---|---|---|---|---|
+| `flag_standby_block_pump_auto` | Block | Standby EIN + User-Switch AN | Standby AUS | Sperrt Pump-AUTO + RV-Intervall |
+| `flag_blocked_ventil_auto` | Block | Not-Aus / System AUS | System EIN | Sperrt Ventil-Auto (→ Ventil ZU) |
+| `flag_requested_ventil_open` | Request | Button "Öffnen" | ventil_auto (einmalig) | Ventil AUF |
+| `flag_requested_ventil_close` | Request | Button "Schließen" | ventil_auto (einmalig) | Ventil ZU |
 
 ### Regel
 - **Neue Features MÜSSEN Block-Flags verwenden.** Keine direkte `switch.turn_on/off` mehr,

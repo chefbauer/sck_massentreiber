@@ -479,8 +479,7 @@ binary_sensor:
           then:
             - lambda: |-
                 id(flag_standby_block_pump_auto) = true;
-                id(switch_ventil_zulauf).turn_off();
-                // Pumpe stilllegen ohne Modus zu ändern (Block-Flag verhindert Auto-Reaktivierung)
+                // Pumpe stilllegen (Block-Flag verhindert Auto-Reaktivierung)
                 id(script_pumpe_a_kurz).stop();
                 id(script_pumpe_a_lang).stop();
                 id(script_rv_pumpe_start).stop();
@@ -489,7 +488,7 @@ binary_sensor:
                 id(rv_auto_phase_ms) = 0;
                 id(rv_auto_pump_on)  = false;
                 id(output_pumpe_dacA).set_level(0.0f);
-                ESP_LOGI("standby", "Block: Pump-AUTO gesperrt, Pumpe+RV aus, Ventil ZU");
+                ESP_LOGI("standby", "Block: Pump-AUTO gesperrt, Pumpe+RV aus");
     on_release:
       - lvgl.widget.hide: lbl_standby_icon
       - lambda: |-
