@@ -138,6 +138,7 @@ font:
     glyphs:
       - "\uF021"  # arrows-rotate (Schwenken, links+rechts)
       - "\uF2F9"  # rotate-right  (Drehen, nur rechts)
+      - "\uF101"  # angle-double-right (>>> Schnell-Indikator)
 
   # Auto-Motor-Button: Drehsymbol ~30% größer als font_icons (40→53px)
   - file: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/webfonts/fa-solid-900.ttf"
@@ -205,16 +206,10 @@ image:
     resize: 28x28
     type: RGB
     transparency: alpha_channel
-  # Schildkröte groß (Countdown-Mini Button, 2x)
+  # Schildkröte groß (Countdown-Mini Button + Drehmodus-Indikator)
   - file: graphics/turtle.svg
     id: img_turtle_lg
     resize: 56x56
-    type: RGB
-    transparency: alpha_channel
-  # Schildkröte klein (Drehmodus Speed-Indikator)
-  - file: graphics/turtle.svg
-    id: img_turtle_sm
-    resize: 22x22
     type: RGB
     transparency: alpha_channel
 
@@ -1003,10 +998,12 @@ lvgl:
                     - obj:
                         id: obj_dr_info
                         width: 140
-                        height: 70
+                        height: 80
                         align: CENTER
-                        bg_opa: TRANSP
+                        bg_color: 0xFFFFFF
+                        bg_opa: 50%
                         border_width: 0
+                        radius: 8
                         clickable: false
                         scrollable: false
                         widgets:
@@ -1014,15 +1011,15 @@ lvgl:
                               id: lbl_dr_info_rpm
                               text: "-- UPM"
                               text_font: font_default_40px
-                              text_color: 0xFFFFFF
+                              text_color: 0x000000
                               align: TOP_MID
-                              y: 0
+                              y: 2
                           - obj:
                               id: obj_dr_info_turtles
-                              width: 108
-                              height: 24
+                              width: 120
+                              height: 30
                               align: BOTTOM_MID
-                              y: 0
+                              y: -4
                               bg_opa: TRANSP
                               border_width: 0
                               clickable: false
@@ -1030,24 +1027,24 @@ lvgl:
                               widgets:
                                 - image:
                                     id: img_dr_turtle1
-                                    src: img_turtle_sm
+                                    src: img_turtle_lg
                                     align: LEFT_MID
                                     x: 0
                                     hidden: true
                                 - image:
                                     id: img_dr_turtle2
-                                    src: img_turtle_sm
+                                    src: img_turtle_lg
                                     align: CENTER
                                     hidden: true
                                 - image:
                                     id: img_dr_turtle3
-                                    src: img_turtle_sm
+                                    src: img_turtle_lg
                                     align: RIGHT_MID
                                     hidden: true
                                 - label:
                                     id: lbl_dr_info_fast
                                     text: "\uF101"
-                                    text_font: font_icons
+                                    text_font: font_icon_xl
                                     text_color: 0xFFCC00
                                     align: CENTER
                                     hidden: true
@@ -3476,7 +3473,7 @@ lvgl:
                                   height: 58
                                   align: LEFT_MID
                                   x: 400
-                                  bg_color: 0x00CCCC
+                                  bg_color: 0xCC00CC
                                   on_click:
                                     - lambda: |-
                                         int32_t b = lv_slider_get_value(id(slider_beckenlicht));
@@ -3489,11 +3486,31 @@ lvgl:
                                         text: ""
                                         align: CENTER
                               - button:
-                                  id: btn_beckenlicht_aus
+                                  id: btn_beckenlicht_rainbow
                                   width: 50
                                   height: 58
                                   align: LEFT_MID
                                   x: 470
+                                  bg_color: 0x666666
+                                  on_click:
+                                    - lambda: |-
+                                        auto call = id(light_slots_becken).turn_on();
+                                        int32_t b = lv_slider_get_value(id(slider_beckenlicht));
+                                        call.set_brightness((float)b / 100.0f);
+                                        call.set_effect("Rainbow");
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: "🌈"
+                                        align: CENTER
+                                        text_font: font_normal
+                                        text_color: 0xFFFFFF
+                              - button:
+                                  id: btn_beckenlicht_aus
+                                  width: 50
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 530
                                   bg_color: 0x666666
                                   on_click:
                                     - lambda: |-
@@ -3506,10 +3523,10 @@ lvgl:
                                         text_color: 0xFFFFFF
                               - slider:
                                   id: slider_beckenlicht
-                                  width: 270
+                                  width: 210
                                   height: 20
                                   align: LEFT_MID
-                                  x: 540
+                                  x: 600
                                   min_value: 1
                                   max_value: 100
                                   value: 60

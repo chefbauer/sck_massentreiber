@@ -363,7 +363,7 @@ light:
 
   # Beckenlicht (WS2815-Ring 35 LEDs, GPIO3)
   - platform: esp32_rmt_led_strip
-    rgb_order: GRB
+    rgb_order: RGB
     chipset: WS2812
     pin: ${pin_pwm3}
     num_leds: 35
@@ -374,3 +374,26 @@ light:
     id: light_slots_becken
     default_transition_length: 500ms
     restore_mode: RESTORE_DEFAULT_ON
+    effects:
+      - addressable_lambda:
+          name: "Rainbow"
+          update_interval: 50ms
+          lambda: |-
+            static uint32_t phase = 0;
+            phase++;
+            int total = it.size();
+            for (int i = 0; i < total; i++) {
+              uint8_t hue = (uint8_t)(((i * 255 / total) + phase) & 0xFF);
+              // HSV→RGB manuell (S=255, V=255)
+              uint8_t sector = hue / 43;
+              uint8_t remainder = (hue - sector * 43) * 6;
+              uint8_t p = 0, q = 255 - remainder, t = remainder;
+              switch (sector) {
+                case 0: it[i] = Color(255, t, 0); break;
+                case 1: it[i] = Color(q, 255, 0); break;
+                case 2: it[i] = Color(0, 255, t); break;
+                case 3: it[i] = Color(0, q, 255); break;
+                case 4: it[i] = Color(t, 0, 255); break;
+                default:it[i] = Color(255, 0, q); break;
+              }
+            }

@@ -228,7 +228,7 @@ sensor:
     device_class: temperature
     state_class: measurement
     one_wire_id: bus_1wire
-    update_interval: 5s
+    update_interval: 15s
     filters:
      - filter_out: nan
     # filters:

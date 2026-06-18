@@ -67,9 +67,9 @@ substitutions:
   # ── Drehen-Preset Namen (angezeigt in Preset-Buttons) ───────
   c_drp1_name: "Bierdose"
   c_drp2_name: "Bierflasche"
-  c_drp3_name: "P3"
-  c_drp4_name: "P4"
-  c_drp5_name: "P5"
+  c_drp3_name: "Bierdose"
+  c_drp4_name: "Bierflasche"
+  c_drp5_name: "Custom"
 
 # ── Packages ─────────────────────────────────────────────────
 packages:
