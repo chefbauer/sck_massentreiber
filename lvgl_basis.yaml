@@ -86,7 +86,7 @@ font:
     id: font_default_40px
     size: 40
     bpp: 4
-    glyphs: "0123456789.-°CW"
+    glyphs: "0123456789.-°C UPM"
 
   # Symbol-Font – Font Awesome Solid (Play/Pause/Schneeflocke/Einstellungen)
   - file: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/webfonts/fa-solid-900.ttf"
@@ -593,24 +593,25 @@ interval:
           if (!lv_obj_has_flag(id(overlay_amg8833), LV_OBJ_FLAG_HIDDEN)) {
             amg_update_cells(id(amg_pixel_temps).data());
           }
-          // ── Drehmodus-Info Overlay (zeigt gespeicherte Einstellungen, nicht Laufzustand) ──
+          // ── Drehmodus-Info Overlay (zeigt gespeicherte Einstellungen) ──
           {
             int _rpm = id(dr_speed_rpm);
             lv_label_set_text_fmt(id(lbl_dr_info_rpm), "%d UPM", _rpm);
             int _tc = (_rpm < 20) ? 3 : (_rpm < 40) ? 2 : (_rpm < 60) ? 1 : 0;
+            lv_obj_t* _t1 = id(img_dr_turtle1);
+            lv_obj_t* _t2 = id(img_dr_turtle2);
+            lv_obj_t* _t3 = id(img_dr_turtle3);
+            lv_obj_t* _fs = id(lbl_dr_info_fast);
             if (_tc == 0) {
-              lv_obj_add_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_clear_flag(id(lbl_dr_info_fast), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(_t1, LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(_t2, LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(_t3, LV_OBJ_FLAG_HIDDEN);
+              lv_obj_clear_flag(_fs, LV_OBJ_FLAG_HIDDEN);
             } else {
-              lv_obj_add_flag(id(lbl_dr_info_fast), LV_OBJ_FLAG_HIDDEN);
-              if (_tc >= 1) lv_obj_clear_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
-              else          lv_obj_add_flag(id(img_dr_turtle1), LV_OBJ_FLAG_HIDDEN);
-              if (_tc >= 2) lv_obj_clear_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
-              else          lv_obj_add_flag(id(img_dr_turtle2), LV_OBJ_FLAG_HIDDEN);
-              if (_tc >= 3) lv_obj_clear_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
-              else          lv_obj_add_flag(id(img_dr_turtle3), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(_fs, LV_OBJ_FLAG_HIDDEN);
+              if (_tc >= 1) lv_obj_clear_flag(_t1, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(_t1, LV_OBJ_FLAG_HIDDEN);
+              if (_tc >= 2) lv_obj_clear_flag(_t2, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(_t2, LV_OBJ_FLAG_HIDDEN);
+              if (_tc >= 3) lv_obj_clear_flag(_t3, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(_t3, LV_OBJ_FLAG_HIDDEN);
             }
           }
           // Uhrzeit in Statusleiste aktualisieren (SNTP)
@@ -1045,8 +1046,8 @@ lvgl:
                                     hidden: true
                                 - label:
                                     id: lbl_dr_info_fast
-                                    text: ">>"
-                                    text_font: font_default_40px
+                                    text: "\uF101"
+                                    text_font: font_icons
                                     text_color: 0xFFCC00
                                     align: CENTER
                                     hidden: true
