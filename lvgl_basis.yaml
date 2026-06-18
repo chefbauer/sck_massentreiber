@@ -3202,94 +3202,100 @@ lvgl:
                                         text_font: font_normal
                                         text_color: 0xFFFFFF
 
-                        # Zeile: Beckenlicht (WS2815 35 LEDs) – AUSKOMMENTIERT WEGEN BOOT-CRASH
-                        # - obj:
-                        #     id: row_beckenlicht
-                        #     width: 960
-                        #     height: 70
-                        #     align: TOP_MID
-                        #     y: 470
-                        #     bg_opa: TRANSP
-                        #     border_width: 0
-                        #     scrollable: false
-                        #     scrollbar_mode: "off"
-                        #     widgets:
-                        #       - label:
-                        #           text: "Beckenlicht:"
-                        #           align: LEFT_MID
-                        #           x: 10
-                        #           text_font: font_normal
-                        #           text_color: 0x000000
-                        #       - button:
-                        #           id: btn_beckenlicht_weiss
-                        #           width: 60
-                        #           height: 58
-                        #           align: LEFT_MID
-                        #           x: 240
-                        #           bg_color: 0xDDDDDD
-                        #           on_click:
-                        #             - lambda: |-
-                        #                 auto call = id(light_slots_becken).turn_on();
-                        #                 call.set_rgb(1.0f, 1.0f, 1.0f);
-                        #                 call.perform();
-                        #           widgets:
-                        #             - label:
-                        #                 text: ""
-                        #                 align: CENTER
-                        #       - button:
-                        #           id: btn_beckenlicht_blau
-                        #           width: 60
-                        #           height: 58
-                        #           align: LEFT_MID
-                        #           x: 320
-                        #           bg_color: 0x0044CC
-                        #           on_click:
-                        #             - lambda: |-
-                        #                 auto call = id(light_slots_becken).turn_on();
-                        #                 call.set_rgb(0.0f, 0.27f, 0.8f);
-                        #                 call.perform();
-                        #           widgets:
-                        #             - label:
-                        #                 text: ""
-                        #                 align: CENTER
-                        #       - button:
-                        #           id: btn_beckenlicht_tuerkis
-                        #           width: 60
-                        #           height: 58
-                        #           align: LEFT_MID
-                        #           x: 400
-                        #           bg_color: 0x00CCCC
-                        #           on_click:
-                        #             - lambda: |-
-                        #                 auto call = id(light_slots_becken).turn_on();
-                        #                 call.set_rgb(0.0f, 0.8f, 0.8f);
-                        #                 call.perform();
-                        #           widgets:
-                        #             - label:
-                        #                 text: ""
-                        #                 align: CENTER
-                        #       - slider:
-                        #           id: slider_beckenlicht
-                        #           width: 320
-                        #           height: 20
-                        #           align: LEFT_MID
-                        #           x: 480
-                        #           min_value: 1
-                        #           max_value: 100
-                        #           value: 60
-                        #           on_value:
-                        #             - lambda: |-
-                        #                 auto call = id(light_slots_becken).make_call();
-                        #                 call.set_brightness((float)x / 100.0f);
-                        #                 call.perform();
-                        #                 lv_label_set_text_fmt(id(lbl_beckenlicht_val), "%d%%", x);
-                        #       - label:
-                        #           id: lbl_beckenlicht_val
-                        #           text: "60%"
-                        #           align: LEFT_MID
-                        #           x: 820
-                        #           text_font: font_normal
-                        #           text_color: 0x003366
+                        # Zeile: Beckenlicht (WS2815 35 LEDs)
+                        - obj:
+                            id: row_beckenlicht
+                            width: 960
+                            height: 70
+                            align: TOP_MID
+                            y: 470
+                            bg_opa: TRANSP
+                            border_width: 0
+                            scrollable: false
+                            scrollbar_mode: "off"
+                            widgets:
+                              - label:
+                                  text: "Beckenlicht:"
+                                  align: LEFT_MID
+                                  x: 10
+                                  text_font: font_normal
+                                  text_color: 0x000000
+                              - button:
+                                  id: btn_beckenlicht_weiss
+                                  width: 60
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 240
+                                  bg_color: 0xDDDDDD
+                                  on_click:
+                                    - lambda: |-
+                                        int32_t b = lv_slider_get_value(id(slider_beckenlicht));
+                                        auto call = id(light_slots_becken).turn_on();
+                                        call.set_rgb(1.0f, 1.0f, 1.0f);
+                                        call.set_brightness((float)b / 100.0f);
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: ""
+                                        align: CENTER
+                              - button:
+                                  id: btn_beckenlicht_blau
+                                  width: 60
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 320
+                                  bg_color: 0x0044CC
+                                  on_click:
+                                    - lambda: |-
+                                        int32_t b = lv_slider_get_value(id(slider_beckenlicht));
+                                        auto call = id(light_slots_becken).turn_on();
+                                        call.set_rgb(0.0f, 0.27f, 0.8f);
+                                        call.set_brightness((float)b / 100.0f);
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: ""
+                                        align: CENTER
+                              - button:
+                                  id: btn_beckenlicht_tuerkis
+                                  width: 60
+                                  height: 58
+                                  align: LEFT_MID
+                                  x: 400
+                                  bg_color: 0x00CCCC
+                                  on_click:
+                                    - lambda: |-
+                                        int32_t b = lv_slider_get_value(id(slider_beckenlicht));
+                                        auto call = id(light_slots_becken).turn_on();
+                                        call.set_rgb(0.0f, 0.8f, 0.8f);
+                                        call.set_brightness((float)b / 100.0f);
+                                        call.perform();
+                                  widgets:
+                                    - label:
+                                        text: ""
+                                        align: CENTER
+                              - slider:
+                                  id: slider_beckenlicht
+                                  width: 320
+                                  height: 20
+                                  align: LEFT_MID
+                                  x: 480
+                                  min_value: 1
+                                  max_value: 100
+                                  value: 60
+                                  on_value:
+                                    - lambda: |-
+                                        auto call = id(light_slots_becken).make_call();
+                                        call.set_brightness((float)x / 100.0f);
+                                        call.perform();
+                                        lv_label_set_text_fmt(id(lbl_beckenlicht_val), "%d%%", x);
+                              - label:
+                                  id: lbl_beckenlicht_val
+                                  text: "60%"
+                                  align: LEFT_MID
+                                  x: 820
+                                  text_font: font_normal
+                                  text_color: 0x003366
 
                         # Zeile: Slot-LED-Breite
                         - obj:
@@ -3297,7 +3303,7 @@ lvgl:
                             width: 960
                             height: 70
                             align: TOP_MID
-                            y: 470
+                            y: 560
                             bg_opa: TRANSP
                             border_width: 0
                             scrollable: false
