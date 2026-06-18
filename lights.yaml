@@ -1,7 +1,7 @@
 # ── Komponenten ──────────────────────────────────────────────────────────────────
 #  substitutions:  c_led_strip_outer_led_num, c_led_strip_outer_led_0deg,
 #                  c_led_strip_leds_per_slot, c_led_strip_outer_direction
-#  light:          light_slots_outer
+#  light:          light_slots_outer, light_slots_becken
 #
 #  sensor (extern, definiert in lvgl_basis.yaml):
 #    sensor_leds_per_slot  → Slot-Breite zur Laufzeit (1 … led_num/6)
@@ -12,8 +12,9 @@
 #    bin_slot1_blink .. bin_slot6_blink  → Blink-Zustand je Slot (->state: plain bool)
 #
 #  Abhängigkeiten (extern, nicht in dieser Datei):
-#    pin_led_h2           → display_7z_settings.yaml
-#    c_motor_direction    → display_7z_settings.yaml
+#    pin_led_h1           → schwippschwenker.yaml
+#    pin_pwm3             → schwippschwenker.yaml (GPIO3, Beckenlicht 35 LEDs)
+#    c_motor_direction    → schwippschwenker.yaml
 #    sensor_motor_position → motorcontrol_can-bus.yaml  (0–16383 = 0–360°)
 # ─────────────────────────────────────────────────────────────────────────────────
 #
@@ -45,7 +46,7 @@ light:
   - platform: esp32_rmt_led_strip
     rgb_order: GRB
     chipset: WS2812
-    pin: ${pin_led_h2}
+    pin: ${pin_led_h1}
     num_leds: ${c_led_strip_outer_led_num}
     rmt_symbols: 96     # ESP32-P4: max 192, kein weiterer Strip → 96
     use_psram: false
@@ -359,3 +360,17 @@ light:
                 it[idx] = slot_colors[s];
               }
             }
+
+  # Beckenlicht (WS2815-Ring 35 LEDs, GPIO3)
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    chipset: WS2812
+    pin: ${pin_pwm3}
+    num_leds: 35
+    rmt_symbols: 24
+    use_psram: false
+    use_dma: false
+    name: "Beckenlicht"
+    id: light_slots_becken
+    default_transition_length: 500ms
+    restore_mode: RESTORE_DEFAULT_ON

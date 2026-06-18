@@ -3,7 +3,7 @@
 #  time:      sntp_time
 #  mcp4728:   dac_output
 #  output:    output_pumpe_dacA, output_ruerwerk,
-#             output_luefter_kompressor_pwm, output_kompressor_relais
+#             output_kompressor_relais
 #  switch:    switch_ventil_zulauf
 #  one_wire:  bus_1wire
 #  i2c:       i2c_amg8833
@@ -142,24 +142,10 @@ output:
     max_power: "${c_ruerwerk_max_perc}%"
     zero_means_zero: true
 
-  # PWM Lüftersteuerung (Kompressor-Lüfter)
-  # Arctic 14 Max: 4-Pin PWM, Open-Collector 5V-Spec (Intel).
-  # ESP32 (3.3V) reicht nicht direkt → Open-Drain + 10kΩ Pull-Up an 5V nötig.
-  - platform: ledc
-    id: output_luefter_kompressor_pwm
-    pin:
-      number: ${pin_pwm4}
-      mode:
-        output: true
-        open_drain: true
-    frequency: 25000 Hz
-    min_power: 0.0
-    zero_means_zero: true
-
   # Kompressor-Relais Ein/Aus
   - platform: gpio
     id: output_kompressor_relais
-    pin: ${pin_pwm3}
+    pin: ${pin_pwm4}
 
 switch:
   # Ventil Zulauf Beckenpumpe (Motorventil, 50% des Zulaufs)
@@ -366,9 +352,6 @@ climate:
             ESP_LOGI("kompressor", "Schutz aktiv – Start verzögert (%.0f s verbleibend)",
                      (120000.0f - millis()) / 1000.0f);
           }
-      - output.set_level:
-          id: output_luefter_kompressor_pwm
-          level: "${fan_kompressor_max_perc}%"
       - lambda: |-
           // ED% Berechnung beim Wiedereinschalten
           if (id(kompressor_aus_ms) > 0 && id(kompressor_letzter_run_ms) > 0) {
@@ -387,9 +370,6 @@ climate:
       - lambda: |-
           id(kompressor_soll_ein) = false;
           id(script_kompressor_delayed_start).stop();
-      - output.set_level:
-          id: output_luefter_kompressor_pwm
-          level: "${fan_kompressor_min_perc}%"
       - lambda: |-
           // ED% Tracking: Laufzeit speichern
           if (id(kompressor_ein_ms) > 0) {
@@ -424,13 +404,7 @@ climate:
           } else {
             lv_obj_clear_state(id(sw_kuehlung), LV_STATE_CHECKED);
           }
-          // Lüfter-Prozentwert aktualisieren
-          char buf[12];
-          float perc = (id(climate_thermostat).action == CLIMATE_ACTION_COOLING)
-            ? ${fan_kompressor_max_perc}
-            : ${fan_kompressor_min_perc};
-          snprintf(buf, sizeof(buf), "%.0f %%", perc);
-          lv_label_set_text(id(lbl_luefter_wert), buf);
+
       - lambda: |-
           // Rührwerk-Slider: kein automatischer Reset – Slider bleibt manuell verstellbar
           // Sync erfolgt nur bei Kompressor-Start (cool_action) und -Stop (idle_action)

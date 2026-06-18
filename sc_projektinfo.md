@@ -361,8 +361,13 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Info
 ---
 
 **Tab "Licht":**
-- Zeile: Label "Slot-Breite" + Slider `slider_slot_breite` (1–28 LEDs) + Wert-Label `lbl_slot_breite_val`
-  - `on_value` → `global_leds_per_slot` setzen → WS2812-Ring-Effekt aktualisiert Slot-Breite motorpositionsbasiert
+- `row_led_strip_onoff` (y:20): Ein/Aus-Buttons `btn_led_strip_ein` / `btn_led_strip_aus` → `light_slots_outer`
+- `row_led_helligkeit` (y:110): Slider `slider_led_helligkeit` (1–100%) + Wert-Label
+- `row_led_auto` (y:200): Switch `sw_led_auto` (VEML7700-Auto-Helligkeit)
+- `row_led_effekt` (y:290): Effekt-Buttons (Aus, Slot, Slot+, Mix, Strobo) → `light_slots_outer.set_effect()`
+- `row_led_hintergrund` (y:380): Hintergrundfarbe Weiß/Blau (für „Slot Colors on White")
+- `row_beckenlicht` (y:470): Beckenlicht: Farbtasten (Weiß, Blau, Türkis) + Slider (1–100%) → `light_slots_becken`
+- `row_slot_breite` (y:560): Slider `slider_slot_breite` (1–28 LEDs) + Wert-Label → `global_leds_per_slot`
 
 ---
 
@@ -517,8 +522,7 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Info
 |---|---|---|---|
 | `output_pumpe_dacA` | MCP4728 Kanal A | — | Turmpumpe (0–3,5 V) |
 | `output_ruerwerk` | LEDC 25 kHz | `pin_pwm1` (GPIO1) | Rührwerk DC-Motor (PWM via Motorcontroller) |
-| `output_luefter_kompressor_pwm` | LEDC 25 kHz | `pin_pwm4` (GPIO4) | Kompressor-Lüfter (Open-Drain) |
-| `output_kompressor_relais` | GPIO | `pin_pwm3` (GPIO3) | Kompressor Ein/Aus |
+| `output_kompressor_relais` | GPIO | `pin_pwm4` (GPIO4) | Kompressor Ein/Aus |
 
 ### Switches
 | ID | Typ | Pin | Zweck |
@@ -542,8 +546,8 @@ Tab-Reihenfolge: **System · Schwenker · Licht · Bildschirm · Kühler · Info
 
 ### Climate — `climate_thermostat`
 - Platform: `thermostat`, Sensor: `sensor_temp_becken`
-- Kühlen: Kompressor-Relais + Lüfter max + Beckenpumpe max
-- Idle: Relais aus + Lüfter min + Beckenpumpe aus
+- Kühlen: Kompressor-Relais + Beckenpumpe max
+- Idle: Relais aus + Beckenpumpe aus
 - Presets: Eco (5 °C), Normal (1,5 °C)
 - `on_control`: im OFF-Modus Beckenpumpe aus, sonst Standby-Level
 
@@ -914,4 +918,6 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 | 2026-06-16 (session) | — | **System-AUS-Guard**: alle 4 pumpenrelevanten Intervalle (`thermostat_steuerung`, `ruehrwerk_steuerung`, `ventil_auto`, `RV-Automodus`) prüfen `if (!id(system_ein)) return;` — keine Pumpenaktivität bei System AUS; `script_beckenpumpe_set_modus(0)` resettet jetzt auch `rv_auto_phase_ms` | `hardware.yaml`, `schwenker.yaml` |
 | 2026-06-16 (session) | — | **App-Titel** umbenannt: „SCK Schwippschwenker" → „SCK Massentreiber"; `font_title`-Glyphs um `M`, `b` ergänzt | `lvgl_basis.yaml`, `schwippschwenker.yaml`, `sc_projektinfo.md` |
 | 2026-06-16 (session) | — | **DS18B20‑Update‑Intervall** 1s→10s wegen Bildschirmflackern (GPIO‑Bit‑Banging stört MIPI‑DSI) | `hardware.yaml` |
-| 2026-06-16 (session) | — | **WiFi‑Scan in Tab Info**: `sensor_wifi_scan` + `interval: 30s` mit async Scan; Scrollbox `lbl_wifi_netze` (960×260) zeigt alle Netze > −80 dBm; alle Info‑Labels schwarz statt grau | `hardware.yaml`, `lvgl_basis.yaml` |
+| 2026-06-18 (session) | — | **Kompressor-Lüfter entfernt**: `output_luefter_kompressor_pwm` raus; `output_kompressor_relais` von GPIO3 auf GPIO4; `fan_kompressor_min_perc`/`max_perc` Substitutionen gelöscht; `row_luefter`/`lbl_luefter_wert` raus aus Tab Kühler | `hardware.yaml`, `schwippschwenker.yaml`, `lvgl_basis.yaml` |
+| 2026-06-18 (session) | — | **Beckenlicht**: WS2815-Ring 35 LEDs auf `${pin_pwm3}` (GPIO3); `light_slots_becken` in `lights.yaml`; Farbtasten Weiß/Blau/Türkis + Slider `slider_beckenlicht` in Tab Licht (y:470); `pin_pwm3` jetzt mit Kommentar „Beckenlicht" | `lights.yaml`, `lvgl_basis.yaml`, `schwippschwenker.yaml` |
+| 2026-06-18 (session) | — | **Pin-Check JC1060P470**: GPIO5 ist frei (MIPI‑RESET liegt auf GPIO27); alter Warnkommentar korrigiert | `schwippschwenker.yaml`, `sc_projektinfo.md` |
