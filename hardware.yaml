@@ -566,14 +566,12 @@ interval:
           // State 4: Countdown läuft, Thermostat bleibt auf -1°C
 
   # ── ruehrwerk_steuerung: alle 1s ─────────────────────────────────────────
-  # Einfach: System AUS → aus. Motor an → 60%. Motor aus → 30%.
+  # Einfach: System AUS → exit ohne Eingriff. Motor an → 60%. Motor aus → 30%.
   - interval: 1s
     then:
       - lambda: |-
-          if (!id(system_ein)) {
-            id(output_ruerwerk).turn_off();
-            return;
-          }
+          if (!id(system_ein)) return;
+
           bool motor_an = id(sw_aktiv) || id(dr_aktiv);
           float level = motor_an ? (${c_ruerwerk_power_on_perc} / 100.0f)
                                 : (${c_ruerwerk_power_idle_perc} / 100.0f);
