@@ -7,7 +7,7 @@
 #            kuehl_komp_war_ein, kuehl_dreher_war_aktiv
 #  Algorithmus: bei jedem 0.05°C-Schritt → P = m·c·ΔT/Δt (m=12kg, c=4186 J/kg·K)
 #  script:   script_kuehl_update  (von sensor_temp_becken.on_value aufgerufen)
-#  Steuerung: vollständig in thermostat_steuerung + ruehrwerk_steuerung (hardware.yaml, 500ms)
+#  Steuerung: vollständig in thermostat_steuerung + ruehrwerk_steuerung (hardware.yaml, 1s)
 # ─────────────────────────────────────────────────────────────────────────────────
 
 globals:

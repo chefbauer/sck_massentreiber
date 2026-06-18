@@ -406,8 +406,7 @@ climate:
           }
 
       - lambda: |-
-          // Rührwerk-Slider: kein automatischer Reset – Slider bleibt manuell verstellbar
-          // Sync erfolgt nur bei Kompressor-Start (cool_action) und -Stop (idle_action)
+          // Rührwerk: wird jetzt zentral in ruehrwerk_steuerung (1s) gesteuert
 
 binary_sensor:
   # Motor läuft (Schwenken oder Drehen) – Template wird jeden Zyklus ausgewertet
@@ -566,61 +565,19 @@ interval:
           }
           // State 4: Countdown läuft, Thermostat bleibt auf -1°C
 
-  # ── ruehrwerk_steuerung: alle 500 ms ──────────────────────────────────────
-  # Zustände: -1=unbekannt, 0=Aus, 1=Kühlung, 2=ICE-Puls
-  # ICE-Puls: ON für c_icebank_pump_ed% eines c_icebank_pump_interval_length-s-Zyklus
-  - interval: 500ms
+  # ── ruehrwerk_steuerung: alle 1s ─────────────────────────────────────────
+  # Einfach: System AUS → aus. Motor an → 60%. Motor aus → 30%.
+  - interval: 1s
     then:
       - lambda: |-
-          if (!id(system_ein)) return;  // System AUS → nichts tun
-
-          static int      pumpe_state   = -1;
-          static uint32_t pump_phase_ms = 0;
-          static bool     pump_ice_on   = false;
-
-          bool ice_an   = id(eisbank_laeuft);
-          bool kuehlend = (id(climate_thermostat).action == CLIMATE_ACTION_COOLING);
-
-          int neuer_state;
-          if (ice_an)        neuer_state = 2;
-          else if (kuehlend) neuer_state = 1;
-          else               neuer_state = 0;
-
-          if (neuer_state != pumpe_state) {
-            pumpe_state   = neuer_state;
-            pump_phase_ms = 0;
-            pump_ice_on   = false;
-            if (neuer_state == 0) {
-              id(output_ruerwerk).turn_off();
-              lv_slider_set_value(id(slider_ruerwerk), 0, LV_ANIM_OFF);
-              ESP_LOGI("ruehrwerk", "AUS");
-            } else if (neuer_state == 1) {
-              id(output_ruerwerk).set_level(${c_ruerwerk_ein_perc} / 100.0f);
-              lv_slider_set_value(id(slider_ruerwerk), ${c_ruerwerk_ein_perc}, LV_ANIM_OFF);
-              ESP_LOGI("ruehrwerk", "EIN (%d%%)", ${c_ruerwerk_ein_perc});
-            } else {
-              ESP_LOGI("ruehrwerk", "ICE-Puls-Modus");
-            }
+          if (!id(system_ein)) {
+            id(output_ruerwerk).turn_off();
+            return;
           }
-
-          // ICE-Puls-Timing
-          if (pumpe_state == 2) {
-            const uint32_t ON_ms    = (uint32_t)(${c_icebank_pump_interval_length} * 1000.0f * ${c_icebank_pump_ed} / 100.0f);
-            const uint32_t CYCLE_ms = (uint32_t)(${c_icebank_pump_interval_length} * 1000.0f);
-            uint32_t elapsed = (pump_phase_ms == 0) ? CYCLE_ms : (millis() - pump_phase_ms);
-            if (elapsed >= CYCLE_ms) {
-              pump_phase_ms = millis();
-              if (!pump_ice_on) {
-                pump_ice_on = true;
-                id(output_ruerwerk).set_level(${c_icebank_pump_power} / 100.0f);
-                lv_slider_set_value(id(slider_ruerwerk), ${c_icebank_pump_power}, LV_ANIM_OFF);
-              }
-            } else if (elapsed >= ON_ms && pump_ice_on) {
-              pump_ice_on = false;
-              id(output_ruerwerk).turn_off();
-              lv_slider_set_value(id(slider_ruerwerk), 0, LV_ANIM_OFF);
-            }
-          }
+          bool motor_an = id(sw_aktiv) || id(dr_aktiv);
+          float level = motor_an ? (${c_ruerwerk_power_on_perc} / 100.0f)
+                                : (${c_ruerwerk_power_idle_perc} / 100.0f);
+          id(output_ruerwerk).set_level(level);
 
   # ── ventil_auto: Ventil folgt Beckenpumpe ─────────────────────────────────
   # Zulauf zweigeteilt: 50% Rückschlagventil (passiv), 50% Motorventil (aktiv).

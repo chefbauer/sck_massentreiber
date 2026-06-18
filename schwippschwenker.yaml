@@ -32,7 +32,8 @@ substitutions:
   c_motor_direction:  "1"   # 0 = links, 1 = rechts (Motor → Welle)
 
   # ── Kühler / Pumpen ──────────────────────────────────────
-  c_ruerwerk_ein_perc:            "30"
+  c_ruerwerk_power_on_perc:         "60"   # PWM-% Rührwerk wenn Motor läuft
+  c_ruerwerk_power_idle_perc:       "30"   # PWM-% Rührwerk wenn Motor aus
   c_ruerwerk_max_perc:            "60"   # PWM-Maximum Rührwerk (Hardware-Limit)
   c_thermostat_deadband:          "0.7"   # °C – Thermostat schaltet EIN bei Zieltemp + Deadband; ICE-Abbruch bei Zieltemp + Deadband
   c_thermostat_overrun:           "0.2"   # °C – Thermostat Overrun (Nachlauf über Solltemp)

@@ -212,7 +212,8 @@ Aktualisiert auch das AMG8833-Overlay wenn es sichtbar ist.
 | `c_motor_direction` | "1" | Motorrichtung: 0=links/1=rechts auf Welle |
 | `c_rv_auto_interval_s` | "30" | RV-Automodus: Zyklus-Länge in Sekunden (Drehen AUS) |
 | `c_rv_auto_duty_pct` | "10" | RV-Automodus: Einschaltdauer in % (10%×30s = 3s EIN) |
-| `c_ruerwerk_ein_perc` | "30" | Rührwerk PWM-% bei Kühlung aktiv |
+| `c_ruerwerk_power_on_perc` | "60" | Rührwerk PWM-% wenn Motor läuft |
+| `c_ruerwerk_power_idle_perc` | "30" | Rührwerk PWM-% wenn Motor aus |
 | `c_ruerwerk_max_perc` | "60" | Rührwerk PWM-Hardware-Limit (max_power) |
 
 > **⚠️ Montage-Besonderheit (Motor-/Systemrichtung):**
@@ -920,4 +921,5 @@ Alle Sensoren auf `i2c_id: i2c_bus` (fremdkonfiguriert in main_config).
 | 2026-06-16 (session) | — | **DS18B20‑Update‑Intervall** 1s→10s wegen Bildschirmflackern (GPIO‑Bit‑Banging stört MIPI‑DSI) | `hardware.yaml` |
 | 2026-06-18 (session) | — | **Kompressor-Lüfter entfernt**: `output_luefter_kompressor_pwm` raus; `output_kompressor_relais` von GPIO3 auf GPIO4; `fan_kompressor_min_perc`/`max_perc` Substitutionen gelöscht; `row_luefter`/`lbl_luefter_wert` raus aus Tab Kühler | `hardware.yaml`, `schwippschwenker.yaml`, `lvgl_basis.yaml` |
 | 2026-06-18 (session) | — | **Beckenlicht**: WS2815-Ring 35 LEDs auf `${pin_pwm3}` (GPIO3); `light_slots_becken` in `lights.yaml`; Farbtasten Weiß/Blau/Türkis + Slider `slider_beckenlicht` in Tab Licht (y:470); `pin_pwm3` jetzt mit Kommentar „Beckenlicht" | `lights.yaml`, `lvgl_basis.yaml`, `schwippschwenker.yaml` |
+| 2026-06-18 (session) | — | **Rührwerk-Steuerung vereinfacht**: Komplette ICE‑Puls‑State‑Machine entfernt; neuer 1s‑Interval: System AUS → aus, Motor an → `c_ruerwerk_power_on_perc` (60%), Motor aus → `c_ruerwerk_power_idle_perc` (30%); `c_ruerwerk_ein_perc` gelöscht | `hardware.yaml`, `schwippschwenker.yaml`, `cooler.yaml` |
 | 2026-06-18 (session) | — | **Pin-Check JC1060P470**: GPIO5 ist frei (MIPI‑RESET liegt auf GPIO27); alter Warnkommentar korrigiert | `schwippschwenker.yaml`, `sc_projektinfo.md` |
