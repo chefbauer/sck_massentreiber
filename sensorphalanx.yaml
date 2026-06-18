@@ -9,7 +9,7 @@
 #  sensor:          distance_sensor, sensor_sht4x_temp, sensor_sht4x_humi,
 #                   bmp_temperature, bmp_pressure, indoor_altitude,
 #                   sensor_veml7700_lux, sensor_Temp_OBJECT
-#  binary_sensor:   bin_objekt_vor_sensor, bin_standby
+#  binary_sensor:   bin_objekt_vor_sensor
 #  globals:         global_lvgl_is_idle, global_emissivity, global_mat_type, global_mat_color
 #  interval:        500ms (AMG/Timer), 10s (LVGL-Idle-Check → global_lvgl_is_idle)
 #  button:          mlx_set_extended
@@ -456,44 +456,6 @@ binary_sensor:
       - component.resume:
           id: sensor_Temp_OBJECT
           update_interval: ${c_ir_update_interval}
-
-  # ── Standby-Erkennung ──────────────────────────────────────────────────────────
-  # EIN wenn: TOF frei (>800mm oder NaN) UND LVGL idle (${c_standby_lvgl_idle})
-  # delayed_on: ${c_standby_delay} → erst nach dieser Zeit wird Standby aktiv
-  - platform: template
-    id: bin_standby
-    name: "Standby"
-    internal: true
-    lambda: |-
-      float d = id(distance_sensor).state;
-      bool tof_frei = isnan(d) || d > ${c_standby_tof_min_mm};
-      return tof_frei && id(global_lvgl_is_idle) && !id(sw_aktiv) && !id(dr_aktiv);
-    filters:
-      - delayed_on: ${c_standby_delay}
-      - delayed_off: 3s
-    on_press:
-      - lvgl.widget.show: lbl_standby_icon
-      - if:
-          condition:
-            lambda: 'return id(global_standby_open_ventil);'
-          then:
-            - lambda: |-
-                id(flag_standby_block_pump_auto) = true;
-                // Pumpe stilllegen (Block-Flag verhindert Auto-Reaktivierung)
-                id(script_pumpe_a_kurz).stop();
-                id(script_pumpe_a_lang).stop();
-                id(script_rv_pumpe_start).stop();
-                id(pumpe_a_aktiv) = false;
-                id(pumpe_a_auto_war_an) = false;
-                id(rv_auto_phase_ms) = 0;
-                id(rv_auto_pump_on)  = false;
-                id(output_pumpe_dacA).set_level(0.0f);
-                ESP_LOGI("standby", "Block: Pump-AUTO gesperrt, Pumpe+RV aus");
-    on_release:
-      - lvgl.widget.hide: lbl_standby_icon
-      - lambda: |-
-          id(flag_standby_block_pump_auto) = false;
-          ESP_LOGI("standby", "Block aufgehoben – Pump-AUTO wieder frei");
 
 script:
     # Schließt overlay_temp_messung (X-Button / Touch auf Temp-Label)

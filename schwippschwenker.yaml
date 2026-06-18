@@ -95,3 +95,6 @@ packages:
 
   # Kühler-Extras
   cooler:          !include cooler.yaml
+
+  # System-Steuerung: Standby, Automatismen
+  system_control:  !include system_control.yaml
