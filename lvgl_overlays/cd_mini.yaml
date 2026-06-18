@@ -83,10 +83,8 @@ obj:
                     lv_label_set_text(id(lbl_cd_turtle_state),
                       id(overlay_cd_turtle) ? "langsam" : "normal");
               widgets:
-                - label:
-                    text: "\uF1B2"
-                    text_font: font_icons
-                    text_color: 0xFFFFFF
+                - image:
+                    src: img_turtle
                     align: CENTER
           - button:
               width: 63

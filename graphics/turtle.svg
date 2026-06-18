@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Panzer (oval, leicht nach rechts geneigt) -->
+  <ellipse cx="30" cy="34" rx="18" ry="16" fill="#228833"/>
+  <ellipse cx="30" cy="32" rx="13" ry="11" fill="#33AA44"/>
+  <ellipse cx="30" cy="30" rx="8" ry="6" fill="#44CC55"/>
+  <!-- Panzer-Muster -->
+  <line x1="22" y1="24" x2="38" y2="24" stroke="#228833" stroke-width="1.2"/>
+  <line x1="20" y1="30" x2="40" y2="30" stroke="#228833" stroke-width="1.2"/>
+  <line x1="22" y1="36" x2="38" y2="36" stroke="#228833" stroke-width="1.2"/>
+  <line x1="30" y1="20" x2="30" y2="42" stroke="#228833" stroke-width="1.2"/>
+  <line x1="24" y1="20" x2="24" y2="42" stroke="#228833" stroke-width="1"/>
+  <line x1="36" y1="20" x2="36" y2="42" stroke="#228833" stroke-width="1"/>
+  <!-- Kopf (rechts vom Panzer, lächelnd) -->
+  <ellipse cx="48" cy="28" rx="9" ry="7" fill="#44CC55"/>
+  <!-- Augen (freundlich, große Pupillen mit Glanz) -->
+  <circle cx="45" cy="26" r="3" fill="#FFFFFF"/>
+  <circle cx="51" cy="26" r="3" fill="#FFFFFF"/>
+  <circle cx="46" cy="26" r="1.5" fill="#111111"/>
+  <circle cx="52" cy="26" r="1.5" fill="#111111"/>
+  <circle cx="46.5" cy="25.5" r="0.6" fill="#FFFFFF"/>
+  <circle cx="52.5" cy="25.5" r="0.6" fill="#FFFFFF"/>
+  <!-- Lächeln -->
+  <path d="M46 31 Q49 34 52 31" stroke="#228833" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- Wangen (rot, freundlich) -->
+  <circle cx="43" cy="30" r="1.8" fill="#FF8866" opacity="0.6"/>
+  <circle cx="54" cy="30" r="1.8" fill="#FF8866" opacity="0.6"/>
+  <!-- Vorderbeine (rechts, unter Kopf) -->
+  <ellipse cx="46" cy="40" rx="4" ry="6" fill="#33AA44" transform="rotate(15 46 40)"/>
+  <ellipse cx="50" cy="44" rx="4" ry="6" fill="#228833" transform="rotate(25 50 44)"/>
+  <!-- Hinterbeine (links) -->
+  <ellipse cx="14" cy="40" rx="4" ry="6" fill="#33AA44" transform="rotate(-15 14 40)"/>
+  <ellipse cx="10" cy="44" rx="4" ry="6" fill="#228833" transform="rotate(-25 10 44)"/>
+  <!-- Schwanz (links, klein und spitz) -->
+  <polygon points="10,34 3,30 8,38" fill="#33AA44"/>
+</svg>

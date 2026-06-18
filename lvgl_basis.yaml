@@ -198,6 +198,12 @@ image:
     resize: 120x120
     type: RGB
     transparency: alpha_channel
+  # Schildkröte (Countdown-Mini + Drehen-Presets langsam)
+  - file: graphics/turtle.svg
+    id: img_turtle
+    resize: 28x28
+    type: RGB
+    transparency: alpha_channel
 
 # Timer-Globals für alle 6 Slots
 # Status: 0=gestoppt  1=läuft  2=pausiert

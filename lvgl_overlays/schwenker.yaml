@@ -977,6 +977,11 @@ obj:
                               y: 8
                               text_font: font_small
                               text_color: 0xDDEEFF
+                          - image:
+                              src: img_turtle
+                              align: TOP_RIGHT
+                              x: -4
+                              y: 6
                           - label:
                               id: lbl_drp3_vals
                               text: "R:80, A:140, P:ON"
@@ -1052,6 +1057,11 @@ obj:
                               y: 8
                               text_font: font_small
                               text_color: 0xDDEEFF
+                          - image:
+                              src: img_turtle
+                              align: TOP_RIGHT
+                              x: -4
+                              y: 6
                           - label:
                               id: lbl_drp4_vals
                               text: "L:120, A:180, P:ON"
