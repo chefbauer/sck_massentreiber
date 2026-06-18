@@ -1,0 +1,1090 @@
+I (413) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size8C
+1
+1
+83
+0
+A
+EE  ((1122442244))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122442244))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122442244))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122442244))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122442244))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122442244))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122442244))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023b  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023b 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b3 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001b0
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0xcdc94568 0x156dfa83 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x5581f400 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (296) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228877))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228877))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228877))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228877))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228877))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228877))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228877))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36e18  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023c  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023c 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b4 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001b1
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0xcdc94568 0x156dfa83 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x5581f400 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228844))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228844))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228844))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228844))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228844))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228844))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228844))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e2b0  GP      : 0x4ff0f580  
+TP      : 0x4ff3e460  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023b  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e29e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e2b0: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e2d0: 0x00000001 0x00000011 0x0000023b 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e2f0: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e5f0 0x4ff09888
+4ff3e310: 0x00000000 0x00000000 0x4ff3e5f0 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e330: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e350: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e370: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e390: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b3 0x4ff18b7c 0x400396f2
+4ff3e3b0: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3f0: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e410: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e430: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e450: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c488 0x4ff3c488 0x00000000
+4ff3e470: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e230
+4ff3e490: 0x000001b0 0x4ff1c450 0x4ff1c450 0x4ff3e48c 0x4ff1c448 0x00000018 0x48026388 0x48026388
+4ff3e4b0: 0x4ff3e48c 0x00000000 0x00000001 0x4ff3c488 0x706f6f6c 0x6b736154 0x00000000 0x00000000
+4ff3e4d0: 0x00000001 0x4ff3e480 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74
+4ff3e4f0: 0x4ff1fcdc 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x4fc0af14 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e570: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e590: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e5b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e5d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1a2b8 0x4ff1a288 0x4ff3e484 0x00000054
+4ff3e5f0: 0x00000000 0x4ff3e5f0 0x00000000 0x00000000 0x00000000 0x4ff3e608 0xffffffff 0x4ff3e608
+4ff3e610: 0x4ff3e608 0x00000000 0x4ff3e61c 0xffffffff 0x4ff3e61c 0x4ff3e61c 0x00000001 0x00000001
+4ff3e630: 0x00000000 0x4ff1a600 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e48c
+4ff3e650: 0x00000000 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c
+4ff3e670: 0x4ff1af30 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0
+4ff3e690: 0x4ff19804 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228855))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228855))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228855))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228855))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228855))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228855))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228855))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023b  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023b 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b3 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001b0
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x00000000 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228855))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228855))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228855))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228855))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228855))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228855))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228855))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023b  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023b 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b3 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001b0
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x00000000 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228844))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228844))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228844))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228844))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228844))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228844))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228844))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbce  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x000a0016  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023b  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023b 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b3 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001b0
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x00000000 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (21) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (24) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (28) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (128) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (293) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228855))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228855))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228855))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228855))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228855))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228855))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228855))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023b  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023b 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b3 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001b0
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x00000000 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228833))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228833))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228833))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228833))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228833))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228833))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228833))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023a  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023a 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b2 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001af
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x00000000 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228844))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228844))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228844))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228844))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228844))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228844))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228844))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023b  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023b 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b3 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001b0
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x00000000 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+8C
+1
+1
+83
+0
+A
+EE  ((1122228844))  ttaasskk__wwddtt::  TTaasskk  wwaattcchhddoogg  ggoott  ttrriiggggeerreedd..  TThhee  ffoolllloowwiinngg  ttaasskkss//uusseerrss  ddiidd  nnoott  rreesseett  tthhee  wwaattcchhddoogg  iinn  ttiimmee::
+
+EE  ((1122228844))  ttaasskk__wwddtt::    --  llooooppTTaasskk  ((CCPPUU  11))
+
+EE  ((1122228844))  ttaasskk__wwddtt::  TTaasskkss  ccuurrrreennttllyy  rruunnnniinngg::
+
+EE  ((1122228844))  ttaasskk__wwddtt::  CCPPUU  00::  IIDDLLEE00
+
+EE  ((1122228844))  ttaasskk__wwddtt::  CCPPUU  11::  llooooppTTaasskk
+
+EE  ((1122228844))  ttaasskk__wwddtt::  AAbboorrttiinngg..
+
+EE  ((1122228844))  ttaasskk__wwddtt::  PPrriinntt  CCPPUU  11  rreeggiisstteerrss
+
+
+
+Core  1 register dump:
+MEPC    : 0x400cdbd0  RA      : 0x4007afa2  SP      : 0x4ff3e230  GP      : 0x4ff0f580  
+TP      : 0x4ff3e3e0  T0      : 0x4fc1a058  T1      : 0x0000000f  T2      : 0xffffffff  
+S0/FP   : 0x00000001  S1      : 0x0000003b  A0      : 0x4ff36d94  A1      : 0x00000001  
+A2      : 0x00000002  A3      : 0x00000015  A4      : 0x0005000b  A5      : 0x00000022  
+A6      : 0x00000001  A7      : 0x00000010  S2      : 0x00000000  S3      : 0x500a0000  
+S4      : 0x0000023b  S5      : 0x00000011  S6      : 0x00000001  S7      : 0x000000ff  
+S8      : 0x4011f000  S9      : 0x00000001  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000900  T5      : 0x4ff3e21e  T6      : 0x00000000  
+MSTATUS : 0x00000003  MTVEC   : 0x00000000  MCAUSE  : 0x00000008  MTVAL   : 0x00002201  
+MHARTID : 0x00000000  
+
+Stack memory:
+4ff3e230: 0x00000003 0x00000000 0x00000008 0x00002201 0x00000000 0x50105000 0x00000003 0x000000ff
+4ff3e250: 0x00000001 0x00000011 0x0000023b 0x4011f000 0x00000001 0x0000003b 0x4ff18b7c 0x4007afa2
+4ff3e270: 0x00000001 0x00000000 0x4ff18b7c 0x400271b8 0x00000000 0x00000000 0x4ff3e56c 0x4ff09888
+4ff3e290: 0x00000000 0x00000000 0x4ff3e56c 0x401073ac 0x4ff1f000 0x00000000 0x00000008 0x00000008
+4ff3e2b0: 0x00000000 0x00000002 0x00000006 0x443b8000 0x00000000 0x0000000b 0x42580000 0x00000002
+4ff3e2d0: 0x00000000 0x00000000 0x00000001 0x00000400 0x00000258 0x00000014 0x000000a0 0x000000a0
+4ff3e2f0: 0x0000000a 0x00000017 0x0000000c 0x00000001 0x4ff18b7c 0x00000003 0x00000001 0x00000000
+4ff3e310: 0x4ff15730 0x40122000 0x4ff122cc 0x4ff12548 0x0000009f 0x000001b3 0x4ff18b7c 0x400396f2
+4ff3e330: 0x0000009b 0x4ff18b7c 0x4ff12244 0x40038eca 0x4001a366 0x00000000 0x00000000 0x00000000
+4ff3e350: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e370: 0x4ff12000 0x00000000 0x00000000 0x4001a382 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e390: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e3d0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000001 0x4ff3c404 0x4ff3c404 0x00000000
+4ff3e3f0: 0x00000000 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x00000160 0x4ff3e1b0 0x000001b0
+4ff3e410: 0x4ff1c450 0x4ff1c450 0x4ff3e408 0x4ff1c448 0x00000018 0x48026388 0x48026388 0x4ff3e408
+4ff3e430: 0x00000000 0x00000001 0x4ff3c404 0x706f6f6c 0x6b736154 0x00000000 0x00000000 0x00000001
+4ff3e450: 0x4ff3e400 0x00000001 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff1fc74 0x4ff1fcdc
+4ff3e470: 0x4ff1fd44 0x00000000 0x00000000 0x00000001 0x00000000 0x00000000 0x00000000 0x4fc0af14
+4ff3e490: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4b0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4d0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e4f0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e510: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e530: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+4ff3e550: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x4ff3e400 0x00000054 0x00000000
+4ff3e570: 0x4ff3e56c 0x00000000 0x00000000 0x00000000 0x4ff3e584 0xffffffff 0x4ff3e584 0x4ff3e584
+4ff3e590: 0x00000000 0x4ff3e598 0xffffffff 0x4ff3e598 0x4ff3e598 0x00000001 0x00000001 0x00000000
+4ff3e5b0: 0x00000000 0x00000000 0xb33fffff 0x00000000 0x00000010 0x00000000 0x4ff3e408 0x00000000
+4ff3e5d0: 0x00000000 0x00000088 0x4ff1b0dc 0x4ff1aed4 0x4ff1a2b8 0x4ff1a288 0x4ff1a23c 0x4ff1af30
+4ff3e5f0: 0x4ff1af60 0x4ff1abbc 0x4ff1ae80 0x4ff1afa0 0x4ff1b0b4 0x4ff18a00 0x4ff199b0 0x4ff19804
+4ff3e610: 0x4ff1968c 0x4ff195e0 0x4ff194d8 0x4ff18c68 0x4ff16cec 0x4ff18d80 0x4ff18d04 0x4ff1a34c
+
+
+
+ELF file SHA256: 4482869d3
+
+Rebooting...
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x31e (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x400c93dc
+Core1 Saved PC:0x4ff089dc
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x164c
+load:0x4ff29ed0,len:0xe08
+load:0x4ff2cbd0,len:0x3604
+entry 0x4ff29ed0
+I (21) boot: ESP-IDF 5.5.2 2nd stage bootloader
+I (21) boot: compile time Mar  6 2026 19:50:48
+I (22) boot: Multicore bootloader
+I (23) boot: chip revision: v1.3
+I (23) boot: efuse block revision: v0.3
+I (24) boot.esp32p4: SPI Speed      : 80MHz
+I (24) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 otadata          OTA data         01 00 00009000 00002000
+I (28) boot:  1 phy_init         RF data          01 01 0000b000 00001000
+I (29) boot:  2 app0             OTA app          00 10 00010000 007c0000
+I (29) boot:  3 app1             OTA app          00 11 007d0000 007c0000
+I (30) boot:  4 nvs              WiFi data        01 02 00f90000 0006d000
+I (32) boot: End of partition table
+I (33) esp_image: segment 0: paddr=00010020 vaddr=40110020 size=a16d0h (661200) map
+I (127) esp_image: segment 1: paddr=000b16f8 vaddr=30100000 size=00068h (   104) load
+I (129) esp_image: segment 2: paddr=000b1768 vaddr=4ff00000 size=0e8b0h ( 59568) load
+I (140) esp_image: segment 3: paddr=000c0020 vaddr=40000020 size=10a57ch (1090940) map
+I (294) esp_image: segment 4: paddr=001ca5a4 vaddr=4ff0e8b0 size=0048ch (  1164) load
+I (295) esp_image: segment 5: paddr=001caa38 vaddr=4ff0ed80 size=03030h ( 12336) load
+I (299) esp_image: segment 6: paddr=001cda70 vaddr=50108080 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
