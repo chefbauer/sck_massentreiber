@@ -204,6 +204,12 @@ image:
     resize: 28x28
     type: RGB
     transparency: alpha_channel
+  # Schildkröte groß (Countdown-Mini Button, 2x)
+  - file: graphics/turtle.svg
+    id: img_turtle_lg
+    resize: 56x56
+    type: RGB
+    transparency: alpha_channel
 
 # Timer-Globals für alle 6 Slots
 # Status: 0=gestoppt  1=läuft  2=pausiert
@@ -490,8 +496,11 @@ script:
           // Turtle: nur wenn Slot aktiv (läuft/pausiert), sonst immer AUS
           id(overlay_cd_turtle) = (id(slot_status)[slot_idx] > 0)
                                     ? id(slot_turtle_active)[slot_idx] : false;
-          lv_obj_set_style_bg_color(id(btn_cd_turtle),
-            id(overlay_cd_turtle) ? lv_color_hex(0x228833) : lv_color_hex(0x666666), 0);
+          {
+            lv_obj_t* _ti = lv_obj_get_child(id(btn_cd_turtle), 0);
+            lv_obj_set_style_opa(_ti,
+              id(overlay_cd_turtle) ? LV_OPA_COVER : LV_OPA_30, 0);
+          }
           lv_label_set_text(id(lbl_cd_turtle_state),
             id(overlay_cd_turtle) ? "langsam" : "normal");
           // Minuten-Wert anzeigen falls gesetzt

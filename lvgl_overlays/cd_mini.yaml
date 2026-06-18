@@ -67,25 +67,26 @@ obj:
               x: 40
           - button:
               id: btn_cd_turtle
-              width: 52
-              height: 52
+              width: 56
+              height: 56
               align: CENTER
               x: 100
-              bg_color: 0x666666
-              bg_opa: COVER
-              radius: 26
+              bg_opa: TRANSP
               border_width: 0
               on_click:
                 - lambda: |-
                     id(overlay_cd_turtle) = !id(overlay_cd_turtle);
-                    lv_obj_set_style_bg_color(id(btn_cd_turtle),
-                      id(overlay_cd_turtle) ? lv_color_hex(0x228833) : lv_color_hex(0x666666), 0);
+                    lv_obj_t* img = lv_obj_get_child(id(btn_cd_turtle), 0);
+                    lv_obj_set_style_opa(img,
+                      id(overlay_cd_turtle) ? LV_OPA_COVER : LV_OPA_30, 0);
                     lv_label_set_text(id(lbl_cd_turtle_state),
                       id(overlay_cd_turtle) ? "langsam" : "normal");
               widgets:
                 - image:
-                    src: img_turtle
+                    id: img_turtle_btn
+                    src: img_turtle_lg
                     align: CENTER
+                    opa: 30%
           - button:
               width: 63
               height: 63
