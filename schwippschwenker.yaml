@@ -43,6 +43,7 @@ substitutions:
   c_thermostat_restore_time:      "15"   # s  – Wartezeit nach Motor/ICE-Stop vor Normaltemp-Wiederherstellung
   c_rv_auto_interval_s:           "30"   # s  – RV-Automodus: Zyklus-Länge (Drehen AUS)
   c_rv_auto_duty_pct:             "10"   # %  – RV-Automodus: Einschaltdauer (10% von 30s = 3s EIN)
+  c_pumpe_turbo_time_sec:         "16"   # s  – Turbo-Füllung: Dauer der 100%-Phase (Standby-End + Long-Press)
 
   # ── Sensor-Phalanx Update-Intervalle ─────────────────────
   c_tof_update_interval:       500ms

@@ -891,7 +891,7 @@ script:
       - delay: 1s
       - lambda: |-
           id(output_pumpe_dacA).set_level(1.0f);   // 100% Spülen
-      - delay: 12000ms
+      - delay: ${c_pumpe_turbo_time_sec}s
       - lambda: |-
           id(output_pumpe_dacA).set_level(0.05f);  // 5% Dauer
           lv_slider_set_value(id(slider_turmpumpe), 5, LV_ANIM_OFF);
