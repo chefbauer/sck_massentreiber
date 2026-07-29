@@ -218,7 +218,7 @@ light:
                     (uint8_t)((float)cp.b + ((float)c0.b - (float)cp.b) * blend)
                   );
                 } else if (t > 1.0f - fade_t) {
-                  float blend = (t - (1.0f - fade_t)) / fade_t;
+                  float blend = 1.0f - (t - (1.0f - fade_t)) / fade_t;
                   c = Color(
                     (uint8_t)((float)c0.r + ((float)cn.r - (float)c0.r) * blend),
                     (uint8_t)((float)c0.g + ((float)cn.g - (float)c0.g) * blend),
