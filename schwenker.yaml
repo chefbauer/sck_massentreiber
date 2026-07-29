@@ -1382,7 +1382,7 @@ interval:
 # ============================================================
 button:
   - platform: template
-    name: "Motor Start/Stop"
+    name: "Motor Start-Stop"
     id: btn_motor_toggle
     on_press:
       - lambda: |-
