@@ -589,42 +589,44 @@ interval:
                                 : (${c_ruerwerk_power_idle_perc} / 100.0f);
           id(output_ruerwerk).set_level(level);
 
-  # ── ventil_auto: ZENTRALE VENTILSTEUERUNG ──────────────────────────────
-  # Nur diese Stelle ruft switch_ventil_zulauf.turn_on/off auf.
-  # Alle anderen setzen nur request-/block-flags.
-  # Priority: Requests > Blocks > System-EIN > Auto
-  # Label-Refresh automatisch via switch_ventil_zulauf.on_turn_on/off
-  - interval: 500ms
-    then:
-      - lambda: |-
-          bool ist_auf = id(switch_ventil_zulauf).state;
-          bool soll_auf = false;
+   # ── ventil_auto: ZENTRALE VENTILSTEUERUNG ──────────────────────────────
+   # Nur diese Stelle ruft switch_ventil_zulauf.turn_on/off auf.
+   # Alle anderen setzen nur request-/block-flags.
+   # Priority: Requests > System-AUS-Guard > Blocks > Auto
+   # Bei System AUS: Requests (manuell) funktionieren, Automatik ist deaktiviert.
+   # Label-Refresh automatisch via switch_ventil_zulauf.on_turn_on/off
+   - interval: 500ms
+     then:
+       - lambda: |-
+           bool ist_auf = id(switch_ventil_zulauf).state;
+           bool soll_auf = false;
 
-          // 1. Request: einmalig, danach gelöscht → Auto entscheidet im nächsten Zyklus
-          if (id(flag_requested_ventil_close)) {
-            id(flag_requested_ventil_close) = false;
-            if (ist_auf) id(switch_ventil_zulauf).turn_off();
-            return;
-          }
-          if (id(flag_requested_ventil_open)) {
-            id(flag_requested_ventil_open) = false;
-            if (!ist_auf) id(switch_ventil_zulauf).turn_on();
-            return;
-          }
+           // 1. Request: einmalig, danach gelöscht (immer aktiv, auch bei System AUS)
+           if (id(flag_requested_ventil_close)) {
+             id(flag_requested_ventil_close) = false;
+             if (ist_auf) id(switch_ventil_zulauf).turn_off();
+             return;
+           }
+           if (id(flag_requested_ventil_open)) {
+             id(flag_requested_ventil_open) = false;
+             if (!ist_auf) id(switch_ventil_zulauf).turn_on();
+             return;
+           }
 
-          // 2. Blocks (dauerhaft, nur Verursacher löscht sie)
-          if (id(flag_blocked_ventil_auto)) { soll_auf = false; }
-          else if (id(flag_standby_block_pump_auto) && id(global_standby_open_ventil)) { soll_auf = true; }
-          // 3. System AUS → ZU
-          else if (!id(system_ein)) { soll_auf = false; }
-          // 4. Auto
-          else { soll_auf = id(pumpe_a_aktiv) && id(rv_auto_phase_ms) == 0; }
+           // 2. System AUS → Automatik deaktiviert, nur manuelle Requests wirken
+           if (!id(system_ein)) return;
 
-          // Ventil nur schalten wenn nötig
-          if (soll_auf && !ist_auf)
-            id(switch_ventil_zulauf).turn_on();
-          else if (!soll_auf && ist_auf)
-            id(switch_ventil_zulauf).turn_off();
+           // 3. Blocks (dauerhaft, nur Verursacher löscht sie)
+           if (id(flag_blocked_ventil_auto)) { soll_auf = false; }
+           else if (id(flag_standby_block_pump_auto) && id(global_standby_open_ventil)) { soll_auf = true; }
+           // 4. Auto
+           else { soll_auf = id(pumpe_a_aktiv) && id(rv_auto_phase_ms) == 0; }
+
+           // Ventil nur schalten wenn nötig
+           if (soll_auf && !ist_auf)
+             id(switch_ventil_zulauf).turn_on();
+           else if (!soll_auf && ist_auf)
+             id(switch_ventil_zulauf).turn_off();
 
   # ── wifi_scan: alle 30s verfügbare Netze aktualisieren ───────────────────
   # Kombiniert verbundenes Netz + Scan-Ergebnisse in einen String.
